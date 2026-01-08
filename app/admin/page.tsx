@@ -1,62 +1,65 @@
 'use client'
 
+import { EndingManager } from '@/components/admin/ending-manager'
 import GameManager from '@/components/admin/game-manager'
 import LeagueManager from '@/components/admin/league-manager'
 import TeamManager from '@/components/admin/team-manager'
-import { Button } from '@/components/ui/button'
+import { Header } from '@/components/ui/header'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Icon } from '@/lib/icons'
-import Link from 'next/link'
+import { Tabs as BaseTabs } from '@base-ui/react'
 import { useState } from 'react'
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('leagues')
+  const tabs: Array<BaseTabs.Tab.Props> = [
+    {
+      value: 'leagues',
+      children: 'Leagues',
+      className: 'data-[state=active]:bg-blue-600'
+    },
+    {
+      value: 'teams',
+      children: 'Teams',
+      className: 'data-[state=active]:bg-blue-600'
+    },
+    {
+      value: 'games',
+      children: 'Games',
+      className: 'data-[state=active]:bg-blue-600'
+    },
+    {
+      value: 'ending',
+      children: 'Ending',
+      className: 'data-active:bg-blue-600'
+    }
+  ]
+
+  const contents = {
+    leagues: <LeagueManager />,
+    teams: <TeamManager />,
+    games: <GameManager />,
+    ending: <EndingManager />
+  }
 
   return (
     <div className='min-h-screen bg-linear-to-b from-zinc-900 to-zinc-950'>
-      {/* Header */}
-      <header className='bg-zinc-900/80 backdrop-blur border-b border-zinc-800 sticky top-0 z-10'>
-        <div className='max-w-6xl mx-auto px-6 flex items-center justify-between'>
-          <div className='flex items-center gap-3'>
-            <h1 className='text-base text-white font-brk'>config</h1>
-          </div>
-          <Link href='/'>
-            <Button
-              size='icon'
-              variant='ghost'
-              className='text-white rounded-full focus-within:bg-transparent hover:bg-transparent'>
-              <Icon name='x' />
-            </Button>
-          </Link>
-        </div>
-      </header>
-
+      <Header title='config' icon='x' href='/' className='md:border-b-0' />
       {/* Content */}
-      <main className='max-w-6xl mx-auto px-4 py-8'>
+      <main className='max-w-6xl mx-auto px-4 py-8 md:py-0'>
         <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
-          <TabsList className='grid w-full grid-cols-3'>
-            <TabsTrigger value='leagues' className='data-[state=active]:bg-blue-600'>
-              Leagues
-            </TabsTrigger>
-            <TabsTrigger value='teams' className='data-[state=active]:bg-blue-600'>
-              Teams
-            </TabsTrigger>
-            <TabsTrigger value='games' className='data-[state=active]:bg-blue-600'>
-              Games
-            </TabsTrigger>
+          <TabsList className='grid w-full grid-cols-4 h-12 dark rounded-none'>
+            {tabs.map((tab) => (
+              <TabsTrigger key={tab.value} value={tab.value} className='rounded-none font-polysans font-medium text-sm'>
+                {tab.children}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
-          <TabsContent value='leagues' className='mt-6'>
-            <LeagueManager />
-          </TabsContent>
-
-          <TabsContent value='teams' className='mt-6'>
-            <TeamManager />
-          </TabsContent>
-
-          <TabsContent value='games' className='mt-6'>
-            <GameManager />
-          </TabsContent>
+          {Object.values(contents).map((content, index) => (
+            <TabsContent key={index} value={tabs[index].value} className='mt-6'>
+              {content}
+            </TabsContent>
+          ))}
         </Tabs>
       </main>
     </div>

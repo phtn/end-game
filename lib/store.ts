@@ -4,15 +4,16 @@ export interface Team {
   id: string
   name: string
   abbreviation?: string
+  code?: number
   logo?: string
 }
 
 export interface Score {
-  q1: number
-  q2: number
-  q3: number
-  q4: number
-  total: number
+  q1?: number
+  q2?: number
+  q3?: number
+  q4?: number
+  total?: number
 }
 
 export interface League {
@@ -20,6 +21,7 @@ export interface League {
   name: string
   sport: string
   logo?: string
+  code?: number
   teams: Team[]
 }
 
@@ -53,6 +55,7 @@ interface AppState {
 const initialLeagues = {
   pba: {
     id: 'pba',
+    code: 1956,
     name: 'Philippine Basketball Association',
     sport: 'Basketball',
     logo: 'https://res.cloudinary.com/dx0heqhhe/image/upload/v1767837248/pba_logo_hsfo5n.png',
@@ -92,9 +95,10 @@ const initialLeagues = {
   },
   nba: {
     id: 'nba',
-    name: 'NBA',
+    code: 132,
+    name: 'National Basketball Association',
     sport: 'Basketball',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/NBA_logo.svg/1200px-NBA_logo.svg.png',
+    logo: 'https://res.cloudinary.com/dx0heqhhe/image/upload/v1767856225/nba-logo_n5ozos.svg',
     teams: [
       {
         id: 'no',
@@ -133,70 +137,6 @@ const initialLeagues = {
         logo: 'https://upload.wikimedia.org/wikipedia/en/0/01/Golden_State_Warriors_logo.svg'
       }
     ]
-  },
-  nfl: {
-    id: 'nfl',
-    name: 'NFL',
-    sport: 'Football',
-    logo: 'https://upload.wikimedia.org/wikipedia/en/a/a2/NFL_shield_logo.svg',
-    teams: [
-      {
-        id: 'sf',
-        name: 'San Francisco 49ers',
-        abbreviation: 'SF',
-        logo: 'https://content.sportslogos.net/logos/7/179/full/9455_san_francisco_49ers-primary-2009.png'
-      },
-      {
-        id: 'kc',
-        name: 'Kansas City Chiefs',
-        abbreviation: 'KC',
-        logo: 'https://upload.wikimedia.org/wikipedia/en/e/e1/Kansas_City_Chiefs_logo.svg'
-      },
-      {
-        id: 'buf',
-        name: 'Buffalo Bills',
-        abbreviation: 'BUF',
-        logo: 'https://upload.wikimedia.org/wikipedia/en/8/8c/Buffalo_Bills_logo.svg'
-      },
-      {
-        id: 'det',
-        name: 'Detroit Lions',
-        abbreviation: 'DET',
-        logo: 'https://upload.wikimedia.org/wikipedia/en/7/71/Detroit_Lions_logo.svg'
-      }
-    ]
-  },
-  mlb: {
-    id: 'mlb',
-    name: 'MLB',
-    sport: 'Baseball',
-    logo: 'https://upload.wikimedia.org/wikipedia/en/a/a6/Major_League_Baseball_logo.svg',
-    teams: [
-      {
-        id: 'nyy',
-        name: 'New York Yankees',
-        abbreviation: 'NYY',
-        logo: 'https://upload.wikimedia.org/wikipedia/en/0/0d/New_York_Yankees.svg'
-      },
-      {
-        id: 'bos',
-        name: 'Boston Red Sox',
-        abbreviation: 'BOS',
-        logo: 'https://upload.wikimedia.org/wikipedia/en/b/bd/Boston_Red_Sox_logo.svg'
-      },
-      {
-        id: 'la',
-        name: 'Los Angeles Dodgers',
-        abbreviation: 'LAD',
-        logo: 'https://upload.wikimedia.org/wikipedia/en/2/2d/Los_Angeles_Dodgers_logo.svg'
-      },
-      {
-        id: 'hou',
-        name: 'Houston Astros',
-        abbreviation: 'HOU',
-        logo: 'https://upload.wikimedia.org/wikipedia/en/9/9f/Houston_Astros_logo.svg'
-      }
-    ]
   }
 }
 
@@ -207,22 +147,16 @@ const initialGames: Game[] = [
     homeTeamId: 'gin',
     awayTeamId: 'smb',
     homeTeamScore: {
-      q1: 25,
-      q2: 27,
-      q3: 28,
-      q4: 22,
-      total: 102
+      q1: 11,
+      total: 11
     },
     awayTeamScore: {
-      q1: 25,
-      q2: 27,
-      q3: 28,
-      q4: 22,
-      total: 93
+      q1: 9,
+      total: 9
     },
     date: new Date().toISOString(),
     status: 'live',
-    period: 'Q3',
+    period: 'Q1',
 
     time: '5:35'
   }

@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAppStore } from '@/lib/store'
 import Image from 'next/image'
 import { useState } from 'react'
+import { SectionHeader } from '../ui/section-header'
 
 export default function TeamManager() {
   const { leagues, addTeamToLeague } = useAppStore()
@@ -39,12 +40,7 @@ export default function TeamManager() {
 
   return (
     <div className='space-y-4'>
-      <div className='flex justify-between items-center mb-6'>
-        <h3 className='text-lg font-semibold text-white'>Teams</h3>
-        <Button onClick={() => setIsAdding(!isAdding)} className='bg-blue-600 hover:bg-blue-700'>
-          {isAdding ? 'Cancel' : '+ Add Team'}
-        </Button>
-      </div>
+      <SectionHeader title='Teams' actionFn={() => setIsAdding(!isAdding)} actionIcon={isAdding ? 'x' : '+'} />
 
       {isAdding && (
         <Card className='bg-zinc-800 border-zinc-700 p-4'>
@@ -92,7 +88,7 @@ export default function TeamManager() {
       <div className='space-y-4'>
         {Object.values(leagues).map((league) => (
           <div key={league.id}>
-            <h4 className='text-sm font-semibold text-gray-400 mb-2'>{league.name}</h4>
+            <h4 className='text-base font-polysans font-semibold text-gray-400 mb-2 uppercase'>{league.id}</h4>
             <div className='grid gap-2'>
               {league.teams.length > 0 ? (
                 league.teams.map((team) => (
@@ -109,11 +105,11 @@ export default function TeamManager() {
                           />
                         )}
                         <div>
-                          <span className='text-white font-medium uppercase'>{team.id}</span>
-                          <p className='text-xs text-gray-400'>{team.name}</p>
+                          <span className='text-white font-polysans font-semibold uppercase'>{team.id}</span>
+                          <p className='font-brk text-xs text-zinc-400'>{team.name}</p>
                         </div>
                       </div>
-                      <Button onClick={handleEdit} className='text-xs'>
+                      <Button onClick={handleEdit} className='text-xs rounded-none font-brk'>
                         Edit
                       </Button>
                     </div>

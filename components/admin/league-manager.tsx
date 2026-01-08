@@ -3,12 +3,14 @@
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Icon, IconName } from '@/lib/icons'
 import { useAppStore } from '@/lib/store'
 import Image from 'next/image'
 import { useState } from 'react'
+import { SectionHeader } from '../ui/section-header'
 
 export default function LeagueManager() {
-  const { leagues, addLeague, deleteLeague } = useAppStore()
+  const { leagues, addLeague } = useAppStore()
   const [isAdding, setIsAdding] = useState(false)
   const [newLeague, setNewLeague] = useState({ name: '', sport: '', logo: '' })
 
@@ -28,12 +30,7 @@ export default function LeagueManager() {
 
   return (
     <div className='space-y-4'>
-      <div className='flex justify-between items-center mb-6'>
-        <h3 className='text-lg font-semibold text-white'>Leagues</h3>
-        <Button onClick={() => setIsAdding(!isAdding)} className='bg-blue-600 hover:bg-blue-700'>
-          {isAdding ? 'Cancel' : '+ Add League'}
-        </Button>
-      </div>
+      <SectionHeader title='Leagues' actionFn={() => setIsAdding(!isAdding)} actionIcon={isAdding ? 'x' : '+'} />
 
       {isAdding && (
         <Card className='bg-zinc-800 border-zinc-700 p-4'>
@@ -67,29 +64,26 @@ export default function LeagueManager() {
       <div className='grid gap-4'>
         {Object.values(leagues).map((league) => (
           <Card key={league.id} className='bg-zinc-800 border-zinc-700 p-4'>
-            <div className='flex justify-between items-start gap-4'>
-              <div className='flex items-start gap-4 flex-1'>
+            <div className='flex items-center justify-between gap-4'>
+              <div className='flex items-center gap-4 flex-1'>
                 {league.logo && (
                   <Image
                     width={100}
                     height={100}
                     src={league.logo || '/placeholder.svg'}
                     alt={league.name}
-                    className='w-12 h-12 object-contain'
+                    className='w-14 h-14 object-contain'
                   />
                 )}
                 <div>
-                  <h4 className='font-semibold text-white'>{league.name}</h4>
-                  <p className='text-sm text-gray-400'>{league.sport}</p>
+                  <div className='flex items-center space-x-2'>
+                    <h4 className='font-semibold text-white uppercase'>{league.id}</h4>
+                    <Icon name={league.sport.toLowerCase() as IconName} className='text-white' />
+                  </div>
+                  <p className='text-sm text-gray-400'></p>
                   <p className='text-xs text-gray-500 mt-1'>{league.teams.length} teams</p>
                 </div>
               </div>
-              <Button
-                onClick={() => deleteLeague(league.id)}
-                variant='destructive'
-                className='bg-red-600 hover:bg-red-700 text-white'>
-                Delete
-              </Button>
             </div>
           </Card>
         ))}

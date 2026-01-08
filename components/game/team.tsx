@@ -1,14 +1,15 @@
-import { Game } from '@/lib/store'
+import { Game, Score as IScore } from '@/lib/store'
+import { cn } from '@/lib/utils'
 
 interface ScoreProps {
   id: string
-  score: number
+  score?: number
 }
 
 export const Score = ({ id, score }: ScoreProps) => {
   return (
     <div id={id} className='flex-1 flex justify-center'>
-      <div className='text-4xl font-brk font-light tracking-tight text-primary leading-none'>{score}</div>
+      <div className='select-none text-4xl font-brk font-light tracking-tight text-primary leading-none'>{score}</div>
     </div>
   )
 }
@@ -33,30 +34,46 @@ interface QuarterScoreProps {
 
 export const QuarterScore = ({ game }: QuarterScoreProps) => {
   return (
-    <div className='flex flex-col items-start gap-0'>
-      <div className='flex items-center border-b border-black/15 gap-x-1 text-xs font-brk uppercase'>
-        <div className='w-7 flex items-center justify-center font-bold border-r border-black/20'>{game.homeTeamId}</div>
-        <div className='grid grid-cols-5 gap-x-1.5'>
-          {Object.values(game.homeTeamScore)?.map((q) => (
-            <div key={q} className='w-4 last:font-bold'>
-              {q}
-            </div>
-          ))}
-        </div>
+    <div className='flex flex-col items-start gap-y-0.5'>
+      <div className='flex items-center gap-x-1 text-xs font-brk uppercase border-b border-zinc-500/0 border-dotted'>
+        <TeamId id={game.homeTeamId} />
+        <ScoresRow score={game.homeTeamScore} />
       </div>
 
       <div className='flex items-center gap-x-1 text-xs font-brk uppercase'>
-        <div className='w-7 flex items-center justify-center font-bold opacity-70 border-r border-black/20'>
-          {game.awayTeamId}
-        </div>
-        <div className='grid grid-cols-5 gap-x-1.5'>
-          {Object.values(game.awayTeamScore)?.map((q) => (
-            <div key={q} className='w-4 last:font-bold'>
-              {q}
-            </div>
-          ))}
-        </div>
+        <TeamId id={game.awayTeamId} />
+        <ScoresRow score={game.awayTeamScore} />
       </div>
+    </div>
+  )
+}
+
+export const TeamId = ({ id }: { id: string }) => {
+  return (
+    <div className='w-7 md:w-10 flex items-center justify-center font-bold opacity-70 border-0 border-black/20'>
+      {id}
+    </div>
+  )
+}
+
+interface ScorePropssRow {
+  score: IScore
+}
+
+const ScoresRow = ({ score }: ScorePropssRow) => {
+  const scores = [score.q1 ?? null, score.q2 ?? null, score.q3 ?? null, score.q4 ?? null, score.total ?? null]
+
+  return (
+    <div className='grid grid-cols-5 gap-x-0'>
+      {scores.map((value, i) => (
+        <div
+          key={`score-${i}`}
+          className={cn(`w-5 md:w-6 text-right ${i === 4 ? 'font-bold w-6' : ''}`, {
+            'bg-zinc-50 rounded-sm': value === null
+          })}>
+          {value ?? ''}
+        </div>
+      ))}
     </div>
   )
 }

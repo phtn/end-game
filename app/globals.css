@@ -24,6 +24,10 @@
   font-style: normal, monospace;
 }
 
+*::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

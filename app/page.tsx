@@ -1,13 +1,15 @@
 'use client'
 
+import { AnalysisCard } from '@/components/card/analysis'
 import { QuarterScore, Score, TimePeriod } from '@/components/game/team'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { PrimaryTeam } from '@/components/ui/primary-team'
 import { Icon } from '@/lib/icons'
 import { useAppStore } from '@/lib/store'
 import { CldImage as Cim } from 'next-cloudinary'
-import Image from 'next/image'
 import Link from 'next/link'
+import { Suspense } from 'react'
 
 export default function Home() {
   const { leagues, games } = useAppStore()
@@ -39,7 +41,7 @@ export default function Home() {
     <div className='min-h-screen bg-background'>
       {/* Header */}
       <header className='border-b border-border bg-background/50 backdrop-blur-sm sticky top-0 z-10'>
-        <div className='max-w-7xl mx-auto px-6 flex items-center justify-between border-zinc-800'>
+        <div className='max-w-7xl mx-auto px-6 md:py-6 flex items-center justify-between border-zinc-800'>
           <div className='flex items-center justify-center gap-3'>
             {league?.logo && (
               <Cim
@@ -60,7 +62,7 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <main className='max-w-7xl mx-auto px-2 md:px-6 md:py-12 space-y-0 border-none'>
+      <main className='max-w-7xl mx-auto px-1 md:px-6 md:py-0 space-y-0 border-none'>
         {/* Live Games Section */}
         <section className='shadow-none'>
           {liveGames.length > 0 ? (
@@ -70,58 +72,23 @@ export default function Home() {
                 const awayTeam = getTeamInfo(game.awayTeamId)
 
                 return (
-                  <Card key={game.id} className='overflow-hidden p-2 md:py-6 border-none'>
+                  <Card key={game.id} className='overflow-hidden p-2 md:py-6 border-none shadow-none'>
                     <div className='p-0 md:p-8'>
-                      {/* League header and teams row */}
                       <div className='mb-4 md:mb-8'>
                         <div className='flex items-center justify-between gap-12 md:gap-8'>
-                          {/* Home Team */}
-                          <div className='flex-1 flex flex-col items-center justify-between gap-0 md:gap-3'>
-                            {homeTeam.logo && (
-                              <Image
-                                width={300}
-                                height={300}
-                                src={homeTeam.logo || '/placeholder.svg'}
-                                alt={homeTeam.name}
-                                className='size-20 md:size-32 object-cover'
-                              />
-                            )}
-                            <div className='text-base text-foreground font-brk uppercase'>{homeTeam.id}</div>
-                            <div className='hidden md:flex text-sm text-muted-foreground tracking-tighter'>
-                              {homeTeam.name}
-                            </div>
-                          </div>
+                          <PrimaryTeam {...homeTeam} />
                           <TimePeriod
                             period={game.period?.split(' ')[0] ?? 'Final'}
                             timeRemaining={game.time ?? '0:00'}
                           />
-                          {/* Away Team */}
-                          <div className='flex-1 flex flex-col items-center  gap-0 md:gap-3'>
-                            {awayTeam.logo && (
-                              <Image
-                                width={300}
-                                height={300}
-                                src={awayTeam.logo || '/placeholder.svg'}
-                                alt={awayTeam.name}
-                                className='size-20 object-cover'
-                              />
-                            )}
-                            <div className='text-base text-foreground font-brk uppercase'>{awayTeam.id}</div>
-                            <div className='hidden md:flex text-sm text-muted-foreground'>{awayTeam.name}</div>
-                          </div>
+                          <PrimaryTeam {...awayTeam} />
                         </div>
                       </div>
 
-                      {/* Scores and time row */}
                       <div className='flex items-center justify-between h-18 md:gap-6'>
-                        {/* Home Score */}
                         <Score id={'home'} score={game.homeTeamScore.total} />
-
-                        {/* Quarter Score */}
                         <QuarterScore game={game} />
-
-                        {/* Away Score */}
-                        <Score id={'home'} score={game.awayTeamScore.total} />
+                        <Score id={'away'} score={game.awayTeamScore.total} />
                       </div>
                     </div>
                   </Card>
@@ -129,32 +96,14 @@ export default function Home() {
               })}
             </div>
           ) : (
-            <Card className='bg-card border-border p-12 text-center'>
+            <Card className='bg-card border-0 p-12 text-center'>
               <p className='text-muted-foreground'>No live matches at this moment</p>
             </Card>
           )}
         </section>
-        <section className='mb-0 shadow-none h-18 border border-black'>
-          <h2 className='text-sm font-brk tracking-tight'>Play Card</h2>
-        </section>
-        <section>
-          <div className=''>
-            <Card key='' className=' border-zinc-800 grid grid-cols-10 gap-1 p-0'>
-              {Array.from({ length: 100 }).map((_, i) => {
-                const row = Math.floor(i / 10)
-                const col = i % 10
-                return (
-                  <div
-                    key={i}
-                    className='bg-zinc-200 select-none flex items-center justify-center size-full aspect-square font-brk'>
-                    {row}
-                    {col}
-                  </div>
-                )
-              })}
-            </Card>
-          </div>
-        </section>
+        <Suspense fallback={<div>Loading...</div>}>
+          <AnalysisCard />
+        </Suspense>
       </main>
     </div>
   )
