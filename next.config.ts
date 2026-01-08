@@ -1,7 +1,24 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  /* config options here */
-};
+  reactCompiler: true,
+  reactStrictMode: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'upload.wikimedia.org'
+      },
+      {
+        protocol: 'https',
+        hostname: 'content.sportslogos.net'
+      },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com'
+      }
+    ]
+  }
+}
 
-export default nextConfig;
+export default nextConfig
