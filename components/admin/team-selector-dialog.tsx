@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { Team, League } from '@/lib/store'
+import { CldImage } from 'next-cloudinary'
 
 interface TeamSelectorDialogProps {
   teamName: string
@@ -51,10 +52,18 @@ export function TeamSelectorDialog({ teamName, league, onSelect, trigger }: Team
                 variant={selectedTeamId === team.id ? 'default' : 'outline'}
                 onClick={() => handleTeamClick(team.id)}
                 className={cn(
-                  'justify-start h-auto py-3 px-4',
+                  'justify-start h-auto py-3 px-4 flex items-center gap-2',
                   selectedTeamId === team.id && 'ring-2 ring-primary'
                 )}>
-                {team.logo && <span className='mr-2 text-lg'>{team.logo}</span>}
+                {team.logo && (
+                  <CldImage
+                    src={team.logo}
+                    width={32}
+                    height={32}
+                    alt={team.name}
+                    className='object-contain'
+                  />
+                )}
                 <span className='text-sm font-medium'>{team.name}</span>
               </Button>
             ))}
