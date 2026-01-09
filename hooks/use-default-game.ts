@@ -15,8 +15,33 @@ export function useDefaultGame() {
   const hasCheckedRef = useRef(false)
 
   useEffect(() => {
-    // Only run once and only if there are no games
-    if (hasCheckedRef.current || games.length > 0) return
+    // Only run once per session
+    if (hasCheckedRef.current) return
+    
+    // Check if there are any current games (live or scheduled)
+    const now = new Date()
+    const hasCurrentGames = games.some((g) => {
+      const gameTime = new Date(g.date)
+      // Check for live games
+      if (g.status === 'live' && gameTime <= now) return true
+      // Check for scheduled games that are today or upcoming (within next 24 hours)
+      if (g.status === 'scheduled') {
+        const hoursUntilGame = (gameTime.getTime() - now.getTime()) / (1000 * 60 * 60)
+        return hoursUntilGame >= -1 && hoursUntilGame <= 24
+      }
+      return false
+    })
+
+    // If there are current games, mark as checked and don't add default
+    if (hasCurrentGames) {
+      hasCheckedRef.current = true
+      console.log('[DefaultGame] Current games found, skipping default game')
+      return
+    }
+
+    // Mark as checked immediately to prevent duplicate runs
+    hasCheckedRef.current = true
+    console.log('[DefaultGame] No current games found, adding default game')
 
     const addDefaultGame = async () => {
       try {
@@ -48,6 +73,19 @@ export function useDefaultGame() {
 
         if (!awayTeamMatch || awayTeamMatch.leagueId !== leagueId) {
           console.log('[DefaultGame] Away team not matched:', match.awayTeam)
+          return
+        }
+
+        // Check if this game already exists (same teams)
+        const gameExists = games.some(
+          (g) =>
+            g.leagueId === leagueId &&
+            ((g.homeTeamId === homeTeamMatch.teamId && g.awayTeamId === awayTeamMatch.teamId) ||
+              (g.homeTeamId === awayTeamMatch.teamId && g.awayTeamId === homeTeamMatch.teamId))
+        )
+
+        if (gameExists) {
+          console.log('[DefaultGame] Game already exists, skipping')
           return
         }
 
@@ -158,13 +196,13 @@ export function useDefaultGame() {
         })
       } catch (error) {
         console.error('[DefaultGame] Error adding default game:', error)
-      } finally {
-        hasCheckedRef.current = true
       }
     }
 
     startTransition(() => {
       addDefaultGame()
     })
-  }, [games.length, fetchScores, addGame, leagues])
+    // Run when games array changes (e.g., after localStorage hydration)
+    // But hasCheckedRef prevents duplicate runs
+  }, [games, fetchScores, addGame, leagues])
 }

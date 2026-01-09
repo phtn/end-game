@@ -4,12 +4,11 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Icon } from '@/lib/icons'
 import { Team, useAppStore } from '@/lib/store'
 import { CldImage } from 'next-cloudinary'
 import { useState } from 'react'
 import { SectionHeader } from '../ui/section-header'
-import { GamesQuery } from './games-query'
-import { Icon } from '@/lib/icons'
 
 export const EndingManager = () => {
   const { leagues, games, deleteGame } = useAppStore()
@@ -30,14 +29,7 @@ export const EndingManager = () => {
 
   return (
     <div className='space-y-4'>
-      <SectionHeader title='Cards' actionFn={() => setIsAdding(!isAdding)} actionIcon={isAdding ? 'x' : '+'} />
-
-      <div className='h-96 border-zinc-700 text-white p-2'>
-        <p className='font-brk text-xs mb-4'>api test: GAMES</p>
-        <div className='font-brk text-zinc-400 text-xs'>
-          <GamesQuery />
-        </div>
-      </div>
+      <SectionHeader title='Current Games' actionFn={undefined} actionIcon={undefined} />
 
       {isAdding && (
         <Card className='bg-zinc-800 border-zinc-700 p-4'>
