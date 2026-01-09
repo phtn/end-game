@@ -59,6 +59,7 @@ export function useLiveGameSync() {
 
           try {
             const matches = await fetchScores({ tournament, live: true })
+            console.log('[LiveSync] Fetched matches for league', leagueId, ':', matches.length, 'matches')
 
             // Match each game with live matches
             for (const game of leagueGames) {
@@ -80,8 +81,23 @@ export function useLiveGameSync() {
               })
 
               if (matchedMatch) {
+                console.log('[LiveSync] Matched game:', {
+                  gameId: game.id,
+                  matchedMatch: {
+                    homeTeam: matchedMatch.homeTeam,
+                    awayTeam: matchedMatch.awayTeam,
+                    status: matchedMatch.status,
+                    period: matchedMatch.period,
+                    timeRemaining: matchedMatch.timeRemaining,
+                    homeScore: matchedMatch.homeScore,
+                    awayScore: matchedMatch.awayScore,
+                    quarterScores: matchedMatch.quarterScores
+                  }
+                })
+
                 const statusMap: Record<string, 'scheduled' | 'live' | 'finished'> = {
                   LIVE: 'live',
+                  SCHEDULED: 'scheduled',
                   END: 'finished',
                   ENDED: 'finished',
                   FINAL: 'finished',
@@ -95,9 +111,32 @@ export function useLiveGameSync() {
                   OT: 'live'
                 }
 
-                const gameStatus = statusMap[matchedMatch.status.toUpperCase()] || game.status
-
+                // Determine if game is actually live or scheduled
+                // A game is live if:
+                // 1. Status explicitly says LIVE, HT, Q1-Q4, or OT
+                // 2. OR we have a period indicator (Q1-Q4, HT, OT)
+                // 3. OR we have quarter scores (game has started)
+                const hasPeriod = !!matchedMatch.period
                 const quarterScores = matchedMatch.quarterScores
+                const hasQuarterScores = quarterScores.home.length > 0 || quarterScores.away.length > 0
+                const hasNonZeroScores = matchedMatch.homeScore > 0 || matchedMatch.awayScore > 0
+                const statusUpper = matchedMatch.status.toUpperCase()
+                
+                let gameStatus: 'scheduled' | 'live' | 'finished' = statusMap[statusUpper] || game.status
+                
+                // If we have quarter scores, the game has definitely started - mark as live
+                if (hasQuarterScores) {
+                  gameStatus = 'live'
+                }
+                // If status is SCHEDULED but we have evidence the game has started, mark as live
+                else if (gameStatus === 'scheduled' && (hasPeriod || hasNonZeroScores)) {
+                  gameStatus = 'live'
+                }
+                
+                // If status is not explicitly set but we have no period and no quarter scores, it's scheduled
+                if (!statusMap[statusUpper] && !hasPeriod && !hasQuarterScores && !hasNonZeroScores) {
+                  gameStatus = 'scheduled'
+                }
                 const homeScore: Game['homeTeamScore'] = {
                   total: matchedMatch.homeScore
                 }
@@ -131,8 +170,23 @@ export function useLiveGameSync() {
                   awayScore.q4 = quarterScores.away[3]
                 }
 
-                // Determine period - use matched period, fallback to status if it's a period indicator
+                // Determine period - prioritize quarter scores, then matched period, then status
                 let period = matchedMatch.period
+                
+                // If we have quarter scores, determine period from them
+                if (!period && hasQuarterScores) {
+                  if (quarterScores.home.length >= 4 || quarterScores.away.length >= 4) {
+                    period = 'Q4'
+                  } else if (quarterScores.home.length >= 3 || quarterScores.away.length >= 3) {
+                    period = 'Q3'
+                  } else if (quarterScores.home.length >= 2 || quarterScores.away.length >= 2) {
+                    period = 'Q2'
+                  } else if (quarterScores.home.length >= 1 || quarterScores.away.length >= 1) {
+                    period = 'Q1'
+                  }
+                }
+                
+                // Fallback to matched period or status if it's a period indicator
                 if (!period) {
                   const statusUpper = matchedMatch.status.toUpperCase()
                   if (statusUpper.match(/^Q[1-4]/)) {
@@ -145,6 +199,8 @@ export function useLiveGameSync() {
                 }
 
                 // Determine time remaining
+                // For scheduled games, timeRemaining is actually the start time
+                // For live games, timeRemaining is the time left in the current quarter
                 const timeRemaining = matchedMatch.timeRemaining || game.time
 
                 const updatedGame: Game = {
@@ -156,7 +212,22 @@ export function useLiveGameSync() {
                   time: timeRemaining
                 }
 
+                console.log('[LiveSync] Updating game:', {
+                  id: game.id,
+                  period: updatedGame.period,
+                  time: updatedGame.time,
+                  homeTotal: updatedGame.homeTeamScore.total,
+                  awayTotal: updatedGame.awayTeamScore.total
+                })
+
                 updateGame(game.id, updatedGame)
+              } else {
+                console.log('[LiveSync] No match found for game:', {
+                  gameId: game.id,
+                  homeTeamId: game.homeTeamId,
+                  awayTeamId: game.awayTeamId,
+                  availableMatches: matches.map(m => ({ home: m.homeTeam, away: m.awayTeam }))
+                })
               }
             }
           } catch (error) {

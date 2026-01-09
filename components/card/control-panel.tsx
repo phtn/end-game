@@ -1,18 +1,12 @@
 'use client'
 
 import { PlayCardItem, usePlayCard, usePlayCardHydrated } from '@/hooks/use-play-card'
-import { Icon } from '@/lib/icons'
-import { Button } from '../ui/button'
-import { useState, useMemo } from 'react'
 import { analyzeBets, BetAnalysis, CombinationScore } from '@/lib/bet/scoring'
 import { Bet } from '@/lib/bet/types'
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription
-} from '../ui/drawer'
+import { Icon } from '@/lib/icons'
+import { useMemo, useState } from 'react'
+import { Button } from '../ui/button'
+import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '../ui/drawer'
 
 interface ControlPanelProps {
   onExpand?: VoidFunction
@@ -68,11 +62,11 @@ const AnalysisSheet = ({ open, onOpenChange, analysis, bestCombo }: AnalysisShee
             <div className='grid grid-cols-3 gap-3'>
               <div className='rounded-lg bg-muted/50 p-3 text-center'>
                 <div className='text-xs text-muted-foreground'>Total Exposure</div>
-                <div className='font-polysans font-medium text-lg'>${analysis.totalExposure.toFixed(0)}</div>
+                <div className='font-polysans font-medium text-lg'>₱{analysis.totalExposure.toFixed(0)}</div>
               </div>
               <div className='rounded-lg bg-muted/50 p-3 text-center'>
                 <div className='text-xs text-muted-foreground'>Max Payout</div>
-                <div className='font-polysans font-medium text-lg'>${analysis.maxSinglePayout.toFixed(0)}</div>
+                <div className='font-polysans font-medium text-lg'>₱{analysis.maxSinglePayout.toFixed(0)}</div>
               </div>
               <div className='rounded-lg bg-muted/50 p-3 text-center'>
                 <div className='text-xs text-muted-foreground'>Risk Score</div>
@@ -130,12 +124,9 @@ const AnalysisSheet = ({ open, onOpenChange, analysis, bestCombo }: AnalysisShee
                   <div key={digit} className='flex items-center gap-2 text-xs'>
                     <span className='w-4 text-muted-foreground font-mono'>{digit}</span>
                     <div className='flex-1 h-2 bg-muted rounded-full overflow-hidden'>
-                      <div
-                        className='h-full bg-sky-500/70 rounded-full transition-all'
-                        style={{ width: `${pct}%` }}
-                      />
+                      <div className='h-full bg-sky-500/70 rounded-full transition-all' style={{ width: `${pct}%` }} />
                     </div>
-                    <span className='w-12 text-right text-muted-foreground'>${exposure.toFixed(0)}</span>
+                    <span className='w-12 text-right text-muted-foreground'>₱{exposure.toFixed(0)}</span>
                   </div>
                 )
               })}
@@ -157,7 +148,7 @@ const AnalysisSheet = ({ open, onOpenChange, analysis, bestCombo }: AnalysisShee
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                    <span className='w-12 text-right text-muted-foreground'>${exposure.toFixed(0)}</span>
+                    <span className='w-12 text-right text-muted-foreground'>₱{exposure.toFixed(0)}</span>
                   </div>
                 )
               })}
@@ -227,12 +218,7 @@ export const ControlPanel = ({ onExpand }: ControlPanelProps) => {
         </div>
       </section>
 
-      <AnalysisSheet
-        open={analysisOpen}
-        onOpenChange={setAnalysisOpen}
-        analysis={analysis}
-        bestCombo={bestCombo}
-      />
+      <AnalysisSheet open={analysisOpen} onOpenChange={setAnalysisOpen} analysis={analysis} bestCombo={bestCombo} />
     </>
   )
 }

@@ -11,17 +11,29 @@ import { CldImage as Cim } from 'next-cloudinary'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { useLiveGameSync } from '@/hooks/use-live-game-sync'
+import { useDefaultGame } from '@/hooks/use-default-game'
 
 export default function Home() {
   const { leagues, games } = useAppStore()
+  
+  // Add default game (second PBA game) if no games exist
+  useDefaultGame()
   
   // Sync live games with API
   useLiveGameSync()
 
   const now = new Date()
+  // Show live games and scheduled games that are today or in the near future
   const liveGames = games.filter((g) => {
     const gameTime = new Date(g.date)
-    return gameTime <= now && g.status === 'live'
+    // Show live games
+    if (g.status === 'live' && gameTime <= now) return true
+    // Show scheduled games that are today or upcoming (within next 24 hours)
+    if (g.status === 'scheduled') {
+      const hoursUntilGame = (gameTime.getTime() - now.getTime()) / (1000 * 60 * 60)
+      return hoursUntilGame >= -1 && hoursUntilGame <= 24
+    }
+    return false
   })
 
   const getTeamInfo = (teamId: string) => {
@@ -85,19 +97,27 @@ export default function Home() {
                             period={
                               game.status === 'finished'
                                 ? 'Final'
-                                : game.period ??
-                                  // Detect period from quarter scores if period is not set
-                                  (game.homeTeamScore.q2 !== undefined && game.homeTeamScore.q3 === undefined
-                                    ? 'HT'
-                                    : game.homeTeamScore.q3 !== undefined && game.homeTeamScore.q4 === undefined
-                                      ? 'Q4'
-                                      : game.homeTeamScore.q2 === undefined && game.homeTeamScore.q1 !== undefined
+                                : // Detect period from quarter scores first (most reliable)
+                                  // qN existing means QN is currently in progress
+                                  game.homeTeamScore.q4 !== undefined || game.awayTeamScore.q4 !== undefined
+                                    ? 'Q4'
+                                    : game.homeTeamScore.q3 !== undefined || game.awayTeamScore.q3 !== undefined
+                                      ? 'Q3'
+                                      : game.homeTeamScore.q2 !== undefined || game.awayTeamScore.q2 !== undefined
                                         ? 'Q2'
-                                        : game.homeTeamScore.q1 === undefined
+                                        : game.homeTeamScore.q1 !== undefined || game.awayTeamScore.q1 !== undefined
                                           ? 'Q1'
-                                          : 'Live')
+                                          : // Fallback to explicit period or status
+                                            game.period ||
+                                            (game.status === 'scheduled' ? 'Scheduled' : 'Q1')
                             }
-                            timeRemaining={game.status === 'finished' ? '' : game.time}
+                            timeRemaining={
+                              game.status === 'finished'
+                                ? ''
+                                : game.status === 'scheduled'
+                                  ? game.time || ''
+                                  : game.time || ''
+                            }
                           />
                           <PrimaryTeam {...awayTeam} />
                         </div>

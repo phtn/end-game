@@ -75,32 +75,52 @@ function parseMatchText(text: string): { homeTeam: string; awayTeam: string; sta
     .trim()
 
   // Extract status, period, and time remaining
-  let status = 'LIVE'
+  // Default to SCHEDULED - will be changed to LIVE if we find evidence the game has started
+  let status = 'SCHEDULED'
   let period: string | undefined
   let timeRemaining: string | undefined
 
-  // Try to extract period and time first (anywhere in text for more flexibility)
-  // Pattern: Q1 5:35, Q2 2:15, HT, OT, etc.
-  const periodTimePatterns = [
-    // Quarter with time patterns
+  // Try to extract period and time (anywhere in text for more flexibility)
+  // First pass: Look for period with time together (e.g., "Q3 5:35")
+  const periodWithTimePatterns = [
     { pattern: /\b(Q[1-4])\s*(\d{1,2}:\d{2})\b/i, periodGroup: 1, timeGroup: 2 },
     { pattern: /\b(Q[1-4])\s*(\d{1,2}['′])\b/i, periodGroup: 1, timeGroup: 2 },
-    { pattern: /\b(Q[1-4])\b/i, periodGroup: 1 },
-    // Halftime - expanded patterns
-    { pattern: /\b(HT|HALFTIME|HALF[-\s]?TIME|1ST\s*HALF|2ND\s*HALF)\b/i, periodGroup: 1 },
-    { pattern: /\bHALF\b/i, periodGroup: 0 }, // Standalone "Half"
-    // Overtime
-    { pattern: /\b(OT|OVERTIME)\s*(\d{1,2}:\d{2})?\b/i, periodGroup: 1, timeGroup: 2 },
-    // Time only (if no quarter found later)
-    { pattern: /\b(\d{1,2}:\d{2})\s*(?:left|remaining)?/i, timeGroup: 1 },
-    { pattern: /\b(\d{1,2})['′]\s*(?:left|remaining)?/i, timeGroup: 1 },
+    { pattern: /\b(OT|OVERTIME)\s*(\d{1,2}:\d{2})\b/i, periodGroup: 1, timeGroup: 2 },
   ]
 
-  for (const { pattern, periodGroup, timeGroup } of periodTimePatterns) {
+  for (const { pattern, periodGroup, timeGroup } of periodWithTimePatterns) {
     const match = cleanText.match(pattern)
     if (match) {
-      if (periodGroup !== undefined && match[periodGroup]) {
+      if (match[periodGroup]) {
         const matchedPeriod = match[periodGroup].toUpperCase()
+        if (matchedPeriod.match(/^Q[1-4]/)) {
+          period = matchedPeriod
+        } else if (matchedPeriod.match(/^(OT|OVERTIME)/i)) {
+          period = 'OT'
+        }
+      }
+      if (match[timeGroup]) {
+        timeRemaining = match[timeGroup]
+      }
+      cleanText = cleanText.replace(match[0], ' ').trim()
+      break
+    }
+  }
+
+  // Second pass: Look for period alone if not found
+  if (!period) {
+    const periodOnlyPatterns = [
+      { pattern: /\b(Q[1-4])\b/i },
+      { pattern: /\b(HT|HALFTIME|HALF[-\s]?TIME)\b/i },
+      { pattern: /\b(1ST\s*HALF|2ND\s*HALF)\b/i },
+      { pattern: /\bHALF\b/i },
+      { pattern: /\b(OT|OVERTIME)\b/i },
+    ]
+
+    for (const { pattern } of periodOnlyPatterns) {
+      const match = cleanText.match(pattern)
+      if (match) {
+        const matchedPeriod = (match[1] || match[0]).toUpperCase()
         if (matchedPeriod.match(/^Q[1-4]/)) {
           period = matchedPeriod
         } else if (matchedPeriod.match(/^(HT|HALFTIME|HALF)/i)) {
@@ -110,13 +130,42 @@ function parseMatchText(text: string): { homeTeam: string; awayTeam: string; sta
         } else if (matchedPeriod.match(/^(OT|OVERTIME)/i)) {
           period = 'OT'
         }
+        cleanText = cleanText.replace(match[0], ' ').trim()
+        break
       }
-      if (timeGroup !== undefined && match[timeGroup]) {
-        timeRemaining = match[timeGroup]
+    }
+  }
+
+  // Third pass: Look for time alone if not found (e.g., "5:35" or "5'")
+  if (!timeRemaining) {
+    const timeOnlyPatterns = [
+      /\b(\d{1,2}:\d{2})\b/, // 5:35 format
+      /\b(\d{1,2})['′]\b/, // 5' format
+    ]
+
+    for (const pattern of timeOnlyPatterns) {
+      const match = cleanText.match(pattern)
+      if (match && match[1]) {
+        // Validate it looks like a game time (not a score)
+        const time = match[1]
+        if (time.includes(':')) {
+          const [mins] = time.split(':').map(Number)
+          // Basketball quarters are typically 10-12 minutes, so time should be < 15
+          if (mins !== undefined && mins < 15) {
+            timeRemaining = time
+            cleanText = cleanText.replace(match[0], ' ').trim()
+            break
+          }
+        } else {
+          // Minutes only format (e.g., "5'")
+          const mins = parseInt(time)
+          if (mins < 15) {
+            timeRemaining = time
+            cleanText = cleanText.replace(match[0], ' ').trim()
+            break
+          }
+        }
       }
-      // Remove matched text from cleanText
-      cleanText = cleanText.replace(match[0], ' ').trim()
-      break
     }
   }
 
@@ -147,6 +196,12 @@ function parseMatchText(text: string): { homeTeam: string; awayTeam: string; sta
       cleanText = cleanText.replace(match[0], ' ').trim()
       break
     }
+  }
+
+  // If we found a period (Q1-Q4, HT, OT), the game is definitely live
+  // If no period and no explicit LIVE status, it's likely scheduled
+  if (period && status === 'SCHEDULED') {
+    status = 'LIVE'
   }
 
   // Extract all numbers (potential scores) - only valid basketball scores

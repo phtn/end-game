@@ -139,10 +139,10 @@ export const PlayCardInteractive = ({ expanded }: { expanded: boolean }) => {
                 className='select-none flex items-center justify-center size-full aspect-square font-brk cursor-pointer'>
                 <div
                   className={cn(
-                    'aspect-square text-lg rounded-full border border-white size-14 font-bold flex items-center justify-center transition-colors',
+                    'aspect-square text-lg rounded-full border border-white size-14 font-bold flex items-center justify-center',
                     {
                       'size-9 text-sm': expanded,
-                      'bg-zinc-500/10': !isFilled,
+                      'bg-faded': !isFilled,
                       'bg-zinc-950 border-zinc-950 text-white': isFilled
                     }
                   )}>

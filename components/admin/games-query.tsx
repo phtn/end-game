@@ -380,26 +380,36 @@ const MatchCard = ({
 
   const handleAddToGames = () => {
     const leagueId = getLeagueIdFromFilter(activeFilter)
-    if (!leagueId || !leagues[leagueId]) return
+    console.log('[AddToGames] activeFilter:', activeFilter, 'leagueId:', leagueId)
+    if (!leagueId || !leagues[leagueId]) {
+      console.log('[AddToGames] No league found, returning')
+      return
+    }
 
     const homeTeamMatch = findTeamByName(match.homeTeam, leagues)
     const awayTeamMatch = findTeamByName(match.awayTeam, leagues)
+    console.log('[AddToGames] homeTeam:', match.homeTeam, '->', homeTeamMatch)
+    console.log('[AddToGames] awayTeam:', match.awayTeam, '->', awayTeamMatch)
 
     // Check if teams need manual selection
     if (!homeTeamMatch || homeTeamMatch.leagueId !== leagueId) {
+      console.log('[AddToGames] Home team needs manual selection')
       setPendingTeam({ type: 'home', name: match.homeTeam })
       return
     }
 
     if (!awayTeamMatch || awayTeamMatch.leagueId !== leagueId) {
+      console.log('[AddToGames] Away team needs manual selection')
       setPendingTeam({ type: 'away', name: match.awayTeam })
       return
     }
 
     // Both teams found, add game
+    console.log('[AddToGames] Both teams matched, adding game')
     const game = convertMatchToGame(homeTeamMatch.teamId, awayTeamMatch.teamId)
     if (game) {
       addGame(game)
+      console.log('[AddToGames] Game added:', game)
     }
   }
 
