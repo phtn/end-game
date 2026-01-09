@@ -3,28 +3,91 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { useScores } from '@/hooks/use-scores'
 import type { MatchScore } from '@/lib/radon/extractor'
 import { cn } from '@/lib/utils'
-import { startTransition, useEffect, useState } from 'react'
+import { startTransition, useEffect, useState, useRef } from 'react'
+import { useAppStore, type Game } from '@/lib/store'
+import { findTeamByName, getLeagueIdFromFilter } from '@/lib/utils/team-matcher'
+import { TeamSelectorDialog } from './team-selector-dialog'
+import { debugQuarterScores } from '@/lib/utils/debug-quarter-scores'
 
-export const GamesQuery = () => {
+interface GamesQueryProps {
+  date?: string
+  live?: boolean
+  filter?: string
+}
+
+export const GamesQuery = ({ date, live, filter }: GamesQueryProps = {}) => {
   const { matches, isLoading, isError, error, fetchScores, reset, lastQueryParams, lastUrl } = useScores()
   const [activeFilter, setActiveFilter] = useState<'euro' | 'pba' | 'nba'>('euro')
   const [showDebug, setShowDebug] = useState(false)
+  const hasInitialized = useRef(false)
 
-  const handleFetch = (filter: 'euro' | 'pba' | 'nba') => {
+  const handleFetch = (filterType: 'euro' | 'pba' | 'nba') => {
     startTransition(() => {
-      setActiveFilter(filter)
-      if (filter === 'euro') fetchScores({ tournament: '138' })
-      else if (filter === 'pba') fetchScores({ tournament: '1956', date: '2026-01-09', live: false })
-      else if (filter === 'nba') fetchScores({ tournament: '132' })
+      setActiveFilter(filterType)
+      const params: { tournament: string; date?: string; live?: boolean; filter?: string } = { tournament: '' }
+      
+      if (filterType === 'euro') {
+        params.tournament = '138'
+      } else if (filterType === 'pba') {
+        params.tournament = '1956'
+      } else if (filterType === 'nba') {
+        params.tournament = '132'
+      }
+
+      // Apply date, live, and filter from props if provided
+      if (date) {
+        params.date = date
+      }
+      if (live !== undefined) {
+        params.live = live
+      }
+      if (filter) {
+        params.filter = filter
+      }
+
+      fetchScores(params)
     })
   }
 
-  // Initial fetch
+  // Initial fetch on mount
   useEffect(() => {
+    if (!hasInitialized.current) {
     startTransition(() => {
-      fetchScores()
-    })
-  }, [fetchScores])
+        const params: { date?: string; live?: boolean; filter?: string } = {}
+        if (date) params.date = date
+        if (live !== undefined) params.live = live
+        if (filter) params.filter = filter
+        fetchScores(params)
+        hasInitialized.current = true
+      })
+    }
+  }, [fetchScores, date, live, filter])
+
+  // Refetch when date/live/filter changes, preserving active filter
+  useEffect(() => {
+    if (hasInitialized.current) {
+      startTransition(() => {
+        const params: { tournament?: string; date?: string; live?: boolean; filter?: string } = {}
+        
+        // Preserve active filter
+        if (activeFilter === 'euro') {
+          params.tournament = '138'
+        } else if (activeFilter === 'pba') {
+          params.tournament = '1956'
+        } else if (activeFilter === 'nba') {
+          params.tournament = '132'
+        }
+        
+        // Apply date, live, and filter from props
+        if (date) params.date = date
+        if (live !== undefined) params.live = live
+        if (filter) params.filter = filter
+        
+        fetchScores(params)
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, live, filter])
 
   return (
     <div className='space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500'>
@@ -80,6 +143,9 @@ export const GamesQuery = () => {
               <div>
                 <span className='text-muted-foreground'>Date:</span> {lastQueryParams?.date || 'None'}
               </div>
+              <div>
+                <span className='text-muted-foreground'>Filter:</span> {lastQueryParams?.filter || 'None'}
+              </div>
               <div className='pt-2 text-muted-foreground/80 italic text-[10px]'>
                 <div className='font-semibold mb-1'>Why PBA might show live data:</div>
                 <ul className='list-disc list-inside space-y-0.5'>
@@ -93,7 +159,12 @@ export const GamesQuery = () => {
 
           <div>
             <div className='font-semibold mb-1'>Matches found: {matches.length}</div>
-            {matches.map((match, i) => (
+            {matches.map((match, i) => {
+              const debugInfo = match._debug
+                ? debugQuarterScores(match._debug.rawScores.slice(2), match.homeScore, match.awayScore)
+                : null
+
+              return (
               <div key={i} className='pl-4 border-l-2 border-border/40 mt-2'>
                 <div>Match {i + 1}:</div>
                 <div className='pl-2'>
@@ -104,14 +175,58 @@ export const GamesQuery = () => {
                     Away: &quot;{match.awayTeam}&quot; ({match.awayScore})
                   </div>
                   <div>Status: {match.status}</div>
-                  {match.quarterScores.home.length > 0 && (
+                    {(match.period || match.timeRemaining) && (
+                      <div>
+                        Period: {match.period || 'N/A'}, Time: {match.timeRemaining || 'N/A'}
+                      </div>
+                    )}
+                    <div className='mt-2 pt-2 border-t border-border/20'>
+                      <div className='font-semibold text-xs mb-1'>Quarter Scores:</div>
+                      {match.quarterScores.home.length > 0 ? (
+                        <div className='text-xs space-y-1'>
+                          <div>
+                            Home: [{match.quarterScores.home.join(', ')}] (Sum:{' '}
+                            {match.quarterScores.home.reduce((a, b) => a + b, 0)})
+                          </div>
                     <div>
-                      Quarters: H[{match.quarterScores.home.join(', ')}] A[{match.quarterScores.away.join(', ')}]
+                            Away: [{match.quarterScores.away.join(', ')}] (Sum:{' '}
+                            {match.quarterScores.away.reduce((a, b) => a + b, 0)})
+                          </div>
+                          <div className='text-muted-foreground/60 italic'>
+                            Home diff: {Math.abs(match.quarterScores.home.reduce((a, b) => a + b, 0) - match.homeScore)}
+                            , Away diff:{' '}
+                            {Math.abs(match.quarterScores.away.reduce((a, b) => a + b, 0) - match.awayScore)}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className='text-xs text-muted-foreground/60 italic'>
+                          No quarter scores extracted (need at least 8 valid scores between 10-45)
+                        </div>
+                      )}
+                      {debugInfo && (
+                        <div className='mt-2 pt-2 border-t border-border/10'>
+                          <div className='text-xs font-semibold mb-1'>Debug Info:</div>
+                          <div className='text-xs text-muted-foreground/80 space-y-0.5'>
+                            <div>Raw scores: [{debugInfo.rawScores.join(', ')}]</div>
+                            <div>Valid scores (10-45): [{debugInfo.validScores.join(', ')}] ({debugInfo.validScores.length} found)</div>
+                            {debugInfo.formatAnalysis.length > 0 && (
+                              <div className='mt-1'>
+                                <div className='font-semibold mb-0.5'>Format Analysis:</div>
+                                {debugInfo.formatAnalysis.map((fmt, idx) => (
+                                  <div key={idx} className='pl-2 text-[10px]'>
+                                    {fmt.format}: H[{fmt.home.join(',')}] A[{fmt.away.join(',')}] - Diff: {fmt.diff}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                     </div>
                   )}
                 </div>
               </div>
-            ))}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
@@ -129,7 +244,12 @@ export const GamesQuery = () => {
           'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
         )}>
         {matches.map((match, i) => (
-          <MatchCard key={`${match.homeTeam}-${match.awayTeam}-${i}`} match={match} index={i} />
+          <MatchCard
+            key={`${match.homeTeam}-${match.awayTeam}-${i}`}
+            match={match}
+            index={i}
+            activeFilter={activeFilter}
+          />
         ))}
 
         {!isLoading && matches.length === 0 && !isError && (
@@ -163,7 +283,167 @@ const FilterButton = ({
   </button>
 )
 
-const MatchCard = ({ match, index }: { match: MatchScore; index: number }) => {
+const MatchCard = ({
+  match,
+  index,
+  activeFilter
+}: {
+  match: MatchScore
+  index: number
+  activeFilter: 'euro' | 'pba' | 'nba'
+}) => {
+  const { leagues, addGame } = useAppStore()
+  const [pendingTeam, setPendingTeam] = useState<{ type: 'home' | 'away'; name: string } | null>(null)
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
+
+  const convertMatchToGame = (homeTeamId: string, awayTeamId: string): Game | null => {
+    const leagueId = getLeagueIdFromFilter(activeFilter)
+    if (!leagueId || !leagues[leagueId]) return null
+
+    const statusMap: Record<string, 'scheduled' | 'live' | 'finished'> = {
+      LIVE: 'live',
+      END: 'finished',
+      ENDED: 'finished',
+      HT: 'live'
+    }
+
+    const gameStatus = statusMap[match.status.toUpperCase()] || 'scheduled'
+
+    const quarterScores = match.quarterScores
+    // Only include quarter scores if they exist and are valid numbers
+    const homeScore: Game['homeTeamScore'] = {
+      total: match.homeScore
+    }
+    if (quarterScores.home.length > 0 && quarterScores.home[0] !== undefined) {
+      homeScore.q1 = quarterScores.home[0]
+    }
+    if (quarterScores.home.length > 1 && quarterScores.home[1] !== undefined) {
+      homeScore.q2 = quarterScores.home[1]
+    }
+    if (quarterScores.home.length > 2 && quarterScores.home[2] !== undefined) {
+      homeScore.q3 = quarterScores.home[2]
+    }
+    if (quarterScores.home.length > 3 && quarterScores.home[3] !== undefined) {
+      homeScore.q4 = quarterScores.home[3]
+    }
+
+    const awayScore: Game['awayTeamScore'] = {
+      total: match.awayScore
+    }
+    if (quarterScores.away.length > 0 && quarterScores.away[0] !== undefined) {
+      awayScore.q1 = quarterScores.away[0]
+    }
+    if (quarterScores.away.length > 1 && quarterScores.away[1] !== undefined) {
+      awayScore.q2 = quarterScores.away[1]
+    }
+    if (quarterScores.away.length > 2 && quarterScores.away[2] !== undefined) {
+      awayScore.q3 = quarterScores.away[2]
+    }
+    if (quarterScores.away.length > 3 && quarterScores.away[3] !== undefined) {
+      awayScore.q4 = quarterScores.away[3]
+    }
+
+    return {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      leagueId,
+      homeTeamId,
+      awayTeamId,
+      homeTeamScore: homeScore,
+      awayTeamScore: awayScore,
+      date: new Date().toISOString(),
+      status: gameStatus,
+      period: match.period || (match.status.match(/^Q[1-4]/) ? match.status : undefined),
+      time: match.timeRemaining
+    }
+  }
+
+  const handleAddToGames = () => {
+    const leagueId = getLeagueIdFromFilter(activeFilter)
+    if (!leagueId || !leagues[leagueId]) return
+
+    const homeTeamMatch = findTeamByName(match.homeTeam, leagues)
+    const awayTeamMatch = findTeamByName(match.awayTeam, leagues)
+
+    // Check if teams need manual selection
+    if (!homeTeamMatch || homeTeamMatch.leagueId !== leagueId) {
+      setPendingTeam({ type: 'home', name: match.homeTeam })
+      return
+    }
+
+    if (!awayTeamMatch || awayTeamMatch.leagueId !== leagueId) {
+      setPendingTeam({ type: 'away', name: match.awayTeam })
+      return
+    }
+
+    // Both teams found, add game
+    const game = convertMatchToGame(homeTeamMatch.teamId, awayTeamMatch.teamId)
+    if (game) {
+      addGame(game)
+    }
+  }
+
+  const handleTeamSelect = (teamId: string) => {
+    if (!pendingTeam) return
+
+    const leagueId = getLeagueIdFromFilter(activeFilter)
+    if (!leagueId || !leagues[leagueId]) return
+
+    const otherTeamName = pendingTeam.type === 'home' ? match.awayTeam : match.homeTeam
+    const otherTeamMatch = findTeamByName(otherTeamName, leagues)
+
+    // If we already have a selected team ID (from previous selection), use it
+    // selectedTeamId is the first team we selected, teamId is the second team we're selecting now
+    if (selectedTeamId) {
+      // Determine which one is home (left) and which is away (right)
+      // match.homeTeam is always left/home, match.awayTeam is always right/away
+      let homeTeamId: string
+      let awayTeamId: string
+
+      if (pendingTeam.type === 'home') {
+        // We're selecting home team now, so teamId is home, selectedTeamId is away
+        homeTeamId = teamId
+        awayTeamId = selectedTeamId
+      } else {
+        // We're selecting away team now, so selectedTeamId is home, teamId is away
+        homeTeamId = selectedTeamId
+        awayTeamId = teamId
+      }
+
+      const game = convertMatchToGame(homeTeamId, awayTeamId)
+      if (game) {
+        addGame(game)
+        setPendingTeam(null)
+        setSelectedTeamId(null)
+      }
+      return
+    }
+
+    // If other team also not found in the same league, store this selection and set other as pending
+    if (!otherTeamMatch || otherTeamMatch.leagueId !== leagueId) {
+      setSelectedTeamId(teamId)
+      setPendingTeam({
+        type: pendingTeam.type === 'home' ? 'away' : 'home',
+        name: otherTeamName
+      })
+      return
+    }
+
+    // Create game with selected team and matched team
+    // match.homeTeam is always left/home, match.awayTeam is always right/away
+    const homeTeamId = pendingTeam.type === 'home' ? teamId : otherTeamMatch.teamId
+    const awayTeamId = pendingTeam.type === 'away' ? teamId : otherTeamMatch.teamId
+
+    const game = convertMatchToGame(homeTeamId, awayTeamId)
+    if (game) {
+      addGame(game)
+      setPendingTeam(null)
+      setSelectedTeamId(null)
+    }
+  }
+
+  const leagueId = getLeagueIdFromFilter(activeFilter)
+  const league = leagueId ? leagues[leagueId] : null
+
   return (
     <Card
       className={cn(
@@ -181,7 +461,20 @@ const MatchCard = ({ match, index }: { match: MatchScore; index: number }) => {
           )}>
           {match.status}
         </span>
-        {/* Could add league or time info here if available */}
+        {(match.period || match.timeRemaining) && (
+          <div className='flex items-center gap-2'>
+            {match.period && (
+              <span className='text-xs font-semibold font-polysans uppercase text-foreground'>
+                {match.period}
+              </span>
+            )}
+            {match.timeRemaining && (
+              <span className='text-xs font-brk text-muted-foreground'>
+                {match.timeRemaining}
+              </span>
+            )}
+          </div>
+        )}
       </CardHeader>
       <CardContent className='p-5'>
         <div className='flex items-center justify-between gap-6'>
@@ -217,6 +510,25 @@ const MatchCard = ({ match, index }: { match: MatchScore; index: number }) => {
             </div>
           </div>
         )}
+
+        <div className='mt-4 pt-4 border-t border-border/40'>
+          {pendingTeam && league ? (
+            <TeamSelectorDialog
+              teamName={pendingTeam.name}
+              league={league}
+              onSelect={handleTeamSelect}
+              trigger={
+                <Button variant='outline' size='sm' className='w-full'>
+                  Select {pendingTeam.type === 'home' ? 'Home' : 'Away'} Team
+                </Button>
+              }
+            />
+          ) : (
+            <Button onClick={handleAddToGames} size='sm' className='w-full'>
+              Add to Games
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   )

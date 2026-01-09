@@ -9,9 +9,10 @@ import { CldImage } from 'next-cloudinary'
 import { useState } from 'react'
 import { SectionHeader } from '../ui/section-header'
 import { GamesQuery } from './games-query'
+import { Icon } from '@/lib/icons'
 
 export const EndingManager = () => {
-  const { leagues, games } = useAppStore()
+  const { leagues, games, deleteGame } = useAppStore()
   const [isAdding, setIsAdding] = useState(false)
   const [selectedLeague, setSelectedLeague] = useState<string | null>(null)
   const [newGame, setNewGame] = useState({
@@ -133,6 +134,13 @@ export const EndingManager = () => {
                       {awayTeam && <PlayingTeam id={awayTeam.id} logo={awayTeam.logo} name={awayTeam.name} />}
                     </div>
                   </div>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    onClick={() => deleteGame(game.id)}
+                    className='text-destructive hover:text-destructive hover:bg-destructive/10 ml-4'>
+                    <Icon name='x' className='size-4' />
+                  </Button>
                 </div>
               </Card>
             )

@@ -10,6 +10,12 @@ export interface MatchScore {
     home: number[]
     away: number[]
   }
+  period?: string // e.g., "Q1", "Q2", "HT", "OT"
+  timeRemaining?: string // e.g., "5:35", "2:15"
+  _debug?: {
+    rawScores: number[]
+    validScores: number[]
+  }
 }
 
 // Known PBA team names for better matching
@@ -57,7 +63,7 @@ const PBA_TEAMS = [
 ]
 
 // Parse match text like: "Pin match END S.M. Beermen Barangay Ginebra ‌ 93 ‌ 84 ‌ 12 ‌ 19..."
-function parseMatchText(text: string): { homeTeam: string; awayTeam: string; status: string; scores: number[] } | null {
+function parseMatchText(text: string): { homeTeam: string; awayTeam: string; status: string; scores: number[]; period?: string; timeRemaining?: string } | null {
   // Remove common prefixes and UI elements
   let cleanText = text
     .replace(/^Pin match\s*/i, '')
@@ -68,8 +74,52 @@ function parseMatchText(text: string): { homeTeam: string; awayTeam: string; sta
     .replace(/\b[XY]\s*[\d.]+/gi, '') // Remove odds like "X 11.00"
     .trim()
 
-  // Extract status (LIVE, END, Ended, HT, Q1-Q4, etc.)
+  // Extract status, period, and time remaining
   let status = 'LIVE'
+  let period: string | undefined
+  let timeRemaining: string | undefined
+
+  // Try to extract period and time first
+  // Pattern: Q1 5:35, Q2 2:15, HT, OT, etc.
+  const periodTimePatterns = [
+    /^(Q([1-4]))\s+(\d+:\d{2})/i, // Q1 5:35
+    /^(Q([1-4]))\s+(\d+['′])/i, // Q1 5'
+    /^(Q([1-4]))\s+(\d+)/i, // Q1 5 (just number)
+    /^(HT|HALFTIME)/i, // HT or HALFTIME
+    /^(OT|OVERTIME)/i, // OT or OVERTIME
+    /^(\d+:\d{2})/i, // Just time like 5:35
+    /^(\d+['′])/i, // Just minutes like 5'
+  ]
+
+  for (const pattern of periodTimePatterns) {
+    const match = cleanText.match(pattern)
+    if (match) {
+      if (match[1]?.match(/^Q[1-4]/i)) {
+        period = match[1].toUpperCase()
+        if (match[3]) {
+          timeRemaining = match[3] // Time like 5:35 or 5'
+        } else if (match[2] && !match[2].match(/^[1-4]$/)) {
+          timeRemaining = match[2] // Minutes if not quarter number
+        }
+        cleanText = cleanText.slice(match[0].length).trim()
+      } else if (match[1]?.match(/^(HT|HALFTIME)/i)) {
+        period = 'HT'
+        cleanText = cleanText.slice(match[0].length).trim()
+      } else if (match[1]?.match(/^(OT|OVERTIME)/i)) {
+        period = 'OT'
+        cleanText = cleanText.slice(match[0].length).trim()
+      } else if (match[1]?.match(/^\d+:\d{2}/)) {
+        timeRemaining = match[1]
+        cleanText = cleanText.slice(match[0].length).trim()
+      } else if (match[1]?.match(/^\d+['′]/)) {
+        timeRemaining = match[1]
+        cleanText = cleanText.slice(match[0].length).trim()
+      }
+      break
+    }
+  }
+
+  // Extract status (LIVE, END, Ended, HT, Q1-Q4, etc.)
   const statusPatterns = [
     /^Ended\s*END\s*/i,
     /^END\s*/i,
@@ -83,7 +133,15 @@ function parseMatchText(text: string): { homeTeam: string; awayTeam: string; sta
   for (const pattern of statusPatterns) {
     const match = cleanText.match(pattern)
     if (match) {
-      status = match[0].replace(/Ended/i, '').trim().toUpperCase() || 'END'
+      const matchedStatus = match[0].replace(/Ended/i, '').trim().toUpperCase() || 'END'
+      if (!period && matchedStatus.match(/^Q[1-4]/)) {
+        period = matchedStatus
+      } else if (!period && matchedStatus === 'HT') {
+        period = 'HT'
+      } else if (!period && matchedStatus === 'OT') {
+        period = 'OT'
+      }
+      status = matchedStatus
       cleanText = cleanText.slice(match[0].length).trim()
       break
     }
@@ -132,7 +190,9 @@ function parseMatchText(text: string): { homeTeam: string; awayTeam: string; sta
       homeTeam: foundTeams[0].name,
       awayTeam: foundTeams[1].name,
       status: status === 'END' ? 'ENDED' : status,
-      scores
+      scores,
+      period,
+      timeRemaining
     }
   }
 
@@ -172,7 +232,9 @@ function parseMatchText(text: string): { homeTeam: string; awayTeam: string; sta
       homeTeam: cleanTeamName(parts[0]),
       awayTeam: cleanTeamName(parts[1]),
       status: status === 'END' ? 'ENDED' : status,
-      scores
+      scores,
+      period,
+      timeRemaining
     }
   }
 
@@ -280,13 +342,20 @@ export function parseMatchesFromHtml(html: string): MatchScore[] {
         // Format in text: [total1, total2, homeQ1, homeQ2, homeQ3, homeQ4, awayQ1, awayQ2, awayQ3, awayQ4]
         const quarterScores = extractQuarterScores(parsed.scores.slice(2), homeScore, awayScore)
 
+        const validScores = parsed.scores.slice(2).filter((s) => s >= 10 && s <= 45)
         matches.push({
           homeTeam: parsed.homeTeam || 'Home',
           awayTeam: parsed.awayTeam || 'Away',
           homeScore,
           awayScore,
           status: parsed.status,
-          quarterScores
+          quarterScores,
+          period: parsed.period,
+          timeRemaining: parsed.timeRemaining,
+          _debug: {
+            rawScores: parsed.scores,
+            validScores
+          }
         })
       }
     }

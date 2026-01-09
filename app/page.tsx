@@ -10,9 +10,13 @@ import { useAppStore } from '@/lib/store'
 import { CldImage as Cim } from 'next-cloudinary'
 import Link from 'next/link'
 import { Suspense } from 'react'
+import { useLiveGameSync } from '@/hooks/use-live-game-sync'
 
 export default function Home() {
   const { leagues, games } = useAppStore()
+  
+  // Sync live games with API
+  useLiveGameSync()
 
   const now = new Date()
   const liveGames = games.filter((g) => {

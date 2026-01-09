@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
 
 export interface Team {
   id: string
@@ -140,31 +141,13 @@ const initialLeagues = {
   }
 }
 
-const initialGames: Game[] = [
-  {
-    id: '1',
-    leagueId: 'pba',
-    homeTeamId: 'gin',
-    awayTeamId: 'smb',
-    homeTeamScore: {
-      q1: 11,
-      total: 11
-    },
-    awayTeamScore: {
-      q1: 9,
-      total: 9
-    },
-    date: new Date().toISOString(),
-    status: 'live',
-    period: 'Q1',
+const initialGames: Game[] = []
 
-    time: '5:35'
-  }
-]
-
-export const useAppStore = create<AppState>((set) => ({
-  leagues: initialLeagues,
-  games: initialGames,
+export const useAppStore = create<AppState>()(
+  persist(
+    (set) => ({
+      leagues: initialLeagues,
+      games: initialGames,
 
   addLeague: (league) =>
     set((state) => ({
@@ -230,4 +213,12 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({
       games: state.games.filter((g) => g.id !== id)
     }))
-}))
+    }),
+    {
+      name: 'end-game-storage', // unique name for localStorage key
+      storage: createJSONStorage(() => localStorage),
+      // Only persist games, not leagues (leagues are static initial data)
+      partialize: (state) => ({ games: state.games })
+    }
+  )
+)
