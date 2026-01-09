@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { useAppStore } from '@/lib/store'
 import { useScores } from './use-scores'
-import { findTeamByName, getLeagueIdFromFilter } from '@/lib/utils/team-matcher'
+import { findTeamByName } from '@/lib/utils/team-matcher'
 import { startTransition } from 'react'
 import type { Game } from '@/lib/store'
-import type { MatchScore } from '@/lib/radon/extractor'
+
+const DEFAULT_GAME_CHECK_KEY = 'default-game-checked'
 
 /**
  * Hook to automatically add a default game (second PBA game) if no games exist
@@ -13,10 +14,11 @@ export function useDefaultGame() {
   const { games, addGame, leagues } = useAppStore()
   const { fetchScores } = useScores()
   const hasCheckedRef = useRef(false)
+  const isProcessingRef = useRef(false)
 
   useEffect(() => {
-    // Only run once per session
-    if (hasCheckedRef.current) return
+    // Prevent concurrent runs
+    if (isProcessingRef.current) return
     
     // Check if there are any current games (live or scheduled)
     const now = new Date()
@@ -32,16 +34,26 @@ export function useDefaultGame() {
       return false
     })
 
-    // If there are current games, mark as checked and don't add default
+    // If there are current games, don't add default
     if (hasCurrentGames) {
-      hasCheckedRef.current = true
-      console.log('[DefaultGame] Current games found, skipping default game')
+      console.log('[DefaultGame] Current games found, skipping default game', games.length)
       return
     }
 
-    // Mark as checked immediately to prevent duplicate runs
-    hasCheckedRef.current = true
+    // No current games - check if we've already added a default game recently (within last 5 seconds)
+    // This prevents rapid duplicate additions
+    const lastCheckTime = sessionStorage.getItem(`${DEFAULT_GAME_CHECK_KEY}-time`)
+    if (lastCheckTime) {
+      const timeSinceLastCheck = Date.now() - parseInt(lastCheckTime, 10)
+      if (timeSinceLastCheck < 5000) {
+        console.log('[DefaultGame] Recently checked, skipping to prevent duplicates')
+        return
+      }
+    }
+
     console.log('[DefaultGame] No current games found, adding default game')
+    isProcessingRef.current = true
+    sessionStorage.setItem(`${DEFAULT_GAME_CHECK_KEY}-time`, Date.now().toString())
 
     const addDefaultGame = async () => {
       try {
@@ -76,8 +88,9 @@ export function useDefaultGame() {
           return
         }
 
-        // Check if this game already exists (same teams)
-        const gameExists = games.some(
+        // Check if this game already exists (same teams) - get fresh games from store
+        const currentGames = useAppStore.getState().games
+        const gameExists = currentGames.some(
           (g) =>
             g.leagueId === leagueId &&
             ((g.homeTeamId === homeTeamMatch.teamId && g.awayTeamId === awayTeamMatch.teamId) ||
@@ -86,6 +99,25 @@ export function useDefaultGame() {
 
         if (gameExists) {
           console.log('[DefaultGame] Game already exists, skipping')
+          isProcessingRef.current = false
+          return
+        }
+
+        // Double-check: verify there are still no current games before adding
+        const now = new Date()
+        const stillHasCurrentGames = currentGames.some((g) => {
+          const gameTime = new Date(g.date)
+          if (g.status === 'live' && gameTime <= now) return true
+          if (g.status === 'scheduled') {
+            const hoursUntilGame = (gameTime.getTime() - now.getTime()) / (1000 * 60 * 60)
+            return hoursUntilGame >= -1 && hoursUntilGame <= 24
+          }
+          return false
+        })
+
+        if (stillHasCurrentGames) {
+          console.log('[DefaultGame] Current games appeared while processing, skipping')
+          isProcessingRef.current = false
           return
         }
 
@@ -196,13 +228,16 @@ export function useDefaultGame() {
         })
       } catch (error) {
         console.error('[DefaultGame] Error adding default game:', error)
+        // Remove the time check on error so it can retry
+        sessionStorage.removeItem(`${DEFAULT_GAME_CHECK_KEY}-time`)
+      } finally {
+        isProcessingRef.current = false
       }
     }
 
     startTransition(() => {
       addDefaultGame()
     })
-    // Run when games array changes (e.g., after localStorage hydration)
-    // But hasCheckedRef prevents duplicate runs
-  }, [games, fetchScores, addGame, leagues])
+    // Re-run when games change so it can add default game if all games are deleted
+  }, [games.length, fetchScores, addGame, leagues])
 }
