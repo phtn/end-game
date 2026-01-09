@@ -42,11 +42,16 @@ export const PlayCardInteractive = ({ expanded }: { expanded: boolean }) => {
   const isDesktop = useMediaQuery('(min-width: 768px)')
   const quickAmounts = [10, 25, 50, 100, 200]
 
+  const generateRandomName = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    return Array.from({ length: 2 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+  }
+
   const handleItemClick = (id: string) => {
     const existingItem = items[id]
     setSelectedItemId(id)
     setFormData({
-      name: existingItem?.name || '',
+      name: existingItem?.name || generateRandomName(),
       amount: existingItem?.amount.toString() || '',
       notes: existingItem?.notes || ''
     })

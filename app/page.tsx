@@ -82,7 +82,21 @@ export default function Home() {
                         <div className='flex items-center justify-between gap-12 md:gap-8'>
                           <PrimaryTeam {...homeTeam} />
                           <TimePeriod
-                            period={game.status === 'finished' ? 'Final' : game.period ?? 'Live'}
+                            period={
+                              game.status === 'finished'
+                                ? 'Final'
+                                : game.period ??
+                                  // Detect period from quarter scores if period is not set
+                                  (game.homeTeamScore.q2 !== undefined && game.homeTeamScore.q3 === undefined
+                                    ? 'HT'
+                                    : game.homeTeamScore.q3 !== undefined && game.homeTeamScore.q4 === undefined
+                                      ? 'Q4'
+                                      : game.homeTeamScore.q2 === undefined && game.homeTeamScore.q1 !== undefined
+                                        ? 'Q2'
+                                        : game.homeTeamScore.q1 === undefined
+                                          ? 'Q1'
+                                          : 'Live')
+                            }
                             timeRemaining={game.status === 'finished' ? '' : game.time}
                           />
                           <PrimaryTeam {...awayTeam} />

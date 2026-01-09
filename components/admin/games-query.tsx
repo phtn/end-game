@@ -304,7 +304,15 @@ const MatchCard = ({
       LIVE: 'live',
       END: 'finished',
       ENDED: 'finished',
-      HT: 'live'
+      FINAL: 'finished',
+      HT: 'live',
+      HALFTIME: 'live',
+      HALF: 'live',
+      Q1: 'live',
+      Q2: 'live',
+      Q3: 'live',
+      Q4: 'live',
+      OT: 'live'
     }
 
     const gameStatus = statusMap[match.status.toUpperCase()] || 'scheduled'
@@ -343,6 +351,19 @@ const MatchCard = ({
       awayScore.q4 = quarterScores.away[3]
     }
 
+    // Determine period from match data
+    let period = match.period
+    if (!period) {
+      const statusUpper = match.status.toUpperCase()
+      if (statusUpper.match(/^Q[1-4]/)) {
+        period = statusUpper
+      } else if (statusUpper.match(/^(HT|HALFTIME|HALF)/)) {
+        period = 'HT'
+      } else if (statusUpper.match(/^OT/)) {
+        period = 'OT'
+      }
+    }
+
     return {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       leagueId,
@@ -352,7 +373,7 @@ const MatchCard = ({
       awayTeamScore: awayScore,
       date: new Date().toISOString(),
       status: gameStatus,
-      period: match.period || (match.status.match(/^Q[1-4]/) ? match.status : undefined),
+      period,
       time: match.timeRemaining
     }
   }

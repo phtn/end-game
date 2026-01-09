@@ -44,7 +44,7 @@ const AnalysisSheet = ({ open, onOpenChange, analysis, bestCombo }: AnalysisShee
           <DrawerDescription>Risk exposure and optimal combinations</DrawerDescription>
         </DrawerHeader>
 
-        <div className='px-4 pb-6 space-y-6'>
+        <div className='px-4 pb-6 space-y-6 overflow-y-auto flex-1'>
           {/* Best Next Combo */}
           {bestCombo && (
             <section className='rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-4'>
