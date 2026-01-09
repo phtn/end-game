@@ -79,70 +79,72 @@ function parseMatchText(text: string): { homeTeam: string; awayTeam: string; sta
   let period: string | undefined
   let timeRemaining: string | undefined
 
-  // Try to extract period and time first
+  // Try to extract period and time first (anywhere in text for more flexibility)
   // Pattern: Q1 5:35, Q2 2:15, HT, OT, etc.
   const periodTimePatterns = [
-    /^(Q([1-4]))\s+(\d+:\d{2})/i, // Q1 5:35
-    /^(Q([1-4]))\s+(\d+['′])/i, // Q1 5'
-    /^(Q([1-4]))\s+(\d+)/i, // Q1 5 (just number)
-    /^(HT|HALFTIME)/i, // HT or HALFTIME
-    /^(OT|OVERTIME)/i, // OT or OVERTIME
-    /^(\d+:\d{2})/i, // Just time like 5:35
-    /^(\d+['′])/i, // Just minutes like 5'
+    // Quarter with time patterns
+    { pattern: /\b(Q[1-4])\s*(\d{1,2}:\d{2})\b/i, periodGroup: 1, timeGroup: 2 },
+    { pattern: /\b(Q[1-4])\s*(\d{1,2}['′])\b/i, periodGroup: 1, timeGroup: 2 },
+    { pattern: /\b(Q[1-4])\b/i, periodGroup: 1 },
+    // Halftime - expanded patterns
+    { pattern: /\b(HT|HALFTIME|HALF[-\s]?TIME|1ST\s*HALF|2ND\s*HALF)\b/i, periodGroup: 1 },
+    { pattern: /\bHALF\b/i, periodGroup: 0 }, // Standalone "Half"
+    // Overtime
+    { pattern: /\b(OT|OVERTIME)\s*(\d{1,2}:\d{2})?\b/i, periodGroup: 1, timeGroup: 2 },
+    // Time only (if no quarter found later)
+    { pattern: /\b(\d{1,2}:\d{2})\s*(?:left|remaining)?/i, timeGroup: 1 },
+    { pattern: /\b(\d{1,2})['′]\s*(?:left|remaining)?/i, timeGroup: 1 },
   ]
 
-  for (const pattern of periodTimePatterns) {
+  for (const { pattern, periodGroup, timeGroup } of periodTimePatterns) {
     const match = cleanText.match(pattern)
     if (match) {
-      if (match[1]?.match(/^Q[1-4]/i)) {
-        period = match[1].toUpperCase()
-        if (match[3]) {
-          timeRemaining = match[3] // Time like 5:35 or 5'
-        } else if (match[2] && !match[2].match(/^[1-4]$/)) {
-          timeRemaining = match[2] // Minutes if not quarter number
+      if (periodGroup !== undefined && match[periodGroup]) {
+        const matchedPeriod = match[periodGroup].toUpperCase()
+        if (matchedPeriod.match(/^Q[1-4]/)) {
+          period = matchedPeriod
+        } else if (matchedPeriod.match(/^(HT|HALFTIME|HALF)/i)) {
+          period = 'HT'
+        } else if (matchedPeriod.match(/^(1ST|2ND)\s*HALF/i)) {
+          period = 'HT'
+        } else if (matchedPeriod.match(/^(OT|OVERTIME)/i)) {
+          period = 'OT'
         }
-        cleanText = cleanText.slice(match[0].length).trim()
-      } else if (match[1]?.match(/^(HT|HALFTIME)/i)) {
-        period = 'HT'
-        cleanText = cleanText.slice(match[0].length).trim()
-      } else if (match[1]?.match(/^(OT|OVERTIME)/i)) {
-        period = 'OT'
-        cleanText = cleanText.slice(match[0].length).trim()
-      } else if (match[1]?.match(/^\d+:\d{2}/)) {
-        timeRemaining = match[1]
-        cleanText = cleanText.slice(match[0].length).trim()
-      } else if (match[1]?.match(/^\d+['′]/)) {
-        timeRemaining = match[1]
-        cleanText = cleanText.slice(match[0].length).trim()
       }
+      if (timeGroup !== undefined && match[timeGroup]) {
+        timeRemaining = match[timeGroup]
+      }
+      // Remove matched text from cleanText
+      cleanText = cleanText.replace(match[0], ' ').trim()
       break
     }
   }
 
   // Extract status (LIVE, END, Ended, HT, Q1-Q4, etc.)
+  // Order matters: specific statuses (HT, Q1-Q4, OT) should be checked before generic LIVE
   const statusPatterns = [
-    /^Ended\s*END\s*/i,
-    /^END\s*/i,
-    /^LIVE\s*/i,
-    /^HT\s*/i,
-    /^Q([1-4])\s*/i,
-    /^(\d+['′])\s*/,
-    /^OT\s*/i
+    { pattern: /\bEnded\s*END\b/i, status: 'END' },
+    { pattern: /\bEND(?:ED)?\b/i, status: 'END' },
+    { pattern: /\bFINAL\b/i, status: 'END' },
+    { pattern: /\b(HT|HALFTIME|HALF[-\s]?TIME)\b/i, status: 'HT' },
+    { pattern: /\bQ([1-4])\b/i, status: 'LIVE' },
+    { pattern: /\bOT\b/i, status: 'LIVE' },
+    { pattern: /\bLIVE\b/i, status: 'LIVE' }, // Check LIVE last
   ]
 
-  for (const pattern of statusPatterns) {
+  for (const { pattern, status: matchedStatus } of statusPatterns) {
     const match = cleanText.match(pattern)
     if (match) {
-      const matchedStatus = match[0].replace(/Ended/i, '').trim().toUpperCase() || 'END'
-      if (!period && matchedStatus.match(/^Q[1-4]/)) {
-        period = matchedStatus
+      status = matchedStatus
+      // If we matched Q1-Q4 and don't have period yet, extract it
+      if (!period && match[1] && matchedStatus === 'LIVE' && match[0].match(/^Q[1-4]/i)) {
+        period = `Q${match[1]}`
       } else if (!period && matchedStatus === 'HT') {
         period = 'HT'
-      } else if (!period && matchedStatus === 'OT') {
+      } else if (!period && match[0].toUpperCase() === 'OT') {
         period = 'OT'
       }
-      status = matchedStatus
-      cleanText = cleanText.slice(match[0].length).trim()
+      cleanText = cleanText.replace(match[0], ' ').trim()
       break
     }
   }
@@ -251,72 +253,122 @@ function cleanTeamName(name: string): string {
 }
 
 // Extract quarter scores from the score array
-// Scores come as: homeQ1, homeQ2, homeQ3, homeQ4, awayQ1, awayQ2, awayQ3, awayQ4
+// Scores come in various formats depending on the game state
+// For live games, may only have partial quarter data (Q1, Q2, etc.)
 // Note: Source data may not always have quarters that sum to totals (common in live data)
 function extractQuarterScores(
   scores: number[],
   homeTotal: number,
   awayTotal: number
 ): { home: number[]; away: number[] } {
-  // Valid quarter scores are typically 10-40 for basketball
-  const validScores = scores.filter((s) => s >= 10 && s <= 45)
+  // Valid quarter scores are typically 5-50 for basketball (lowered min for early game)
+  const validScores = scores.filter((s) => s >= 5 && s <= 50)
 
-  if (validScores.length < 8) {
+  // Handle empty or insufficient data
+  if (validScores.length < 2) {
     return { home: [], away: [] }
   }
 
-  // Take first 8 valid scores and try different formats
-  const first8 = validScores.slice(0, 8)
+  // For full game data (8+ quarter scores)
+  if (validScores.length >= 8) {
+    const first8 = validScores.slice(0, 8)
 
-  // Calculate different format options
-  const formats = [
-    // Sequential: home first 4, away next 4
-    { home: first8.slice(0, 4), away: first8.slice(4, 8) },
-    // Interleaved: h1,a1,h2,a2,h3,a3,h4,a4
-    {
-      home: [first8[0], first8[2], first8[4], first8[6]],
-      away: [first8[1], first8[3], first8[5], first8[7]]
-    },
-    // Swapped interleaved: a1,h1,a2,h2,a3,a4,h4,a4
-    {
-      home: [first8[1], first8[3], first8[5], first8[7]],
-      away: [first8[0], first8[2], first8[4], first8[6]]
+    // Calculate different format options
+    const formats = [
+      // Sequential: home first 4, away next 4
+      { home: first8.slice(0, 4), away: first8.slice(4, 8) },
+      // Interleaved: h1,a1,h2,a2,h3,a3,h4,a4
+      {
+        home: [first8[0], first8[2], first8[4], first8[6]],
+        away: [first8[1], first8[3], first8[5], first8[7]]
+      },
+      // Swapped interleaved: a1,h1,a2,h2,a3,a4,h4,a4
+      {
+        home: [first8[1], first8[3], first8[5], first8[7]],
+        away: [first8[0], first8[2], first8[4], first8[6]]
+      }
+    ]
+
+    // Find the format where sums are closest to totals
+    let bestFormat: { home: number[]; away: number[] } | null = null
+    let bestDiff = Infinity
+
+    for (const format of formats) {
+      const homeFiltered = format.home.filter((n): n is number => n !== undefined)
+      const awayFiltered = format.away.filter((n): n is number => n !== undefined)
+
+      if (homeFiltered.length !== 4 || awayFiltered.length !== 4) continue
+
+      const homeSum = homeFiltered.reduce((a, b) => a + b, 0)
+      const awaySum = awayFiltered.reduce((a, b) => a + b, 0)
+      const diff = Math.abs(homeSum - homeTotal) + Math.abs(awaySum - awayTotal)
+
+      if (diff < bestDiff) {
+        bestDiff = diff
+        bestFormat = { home: homeFiltered, away: awayFiltered }
+      }
     }
-  ]
 
-  // Find the format where sums are closest to totals
-  let bestFormat: { home: number[]; away: number[] } | null = null
-  let bestDiff = Infinity
+    if (bestFormat) {
+      // Calculate Q4 for away team from total (source data often has corrupted Q4)
+      const awayQ1to3Sum = bestFormat.away.slice(0, 3).reduce((a, b) => a + b, 0)
+      const calculatedAwayQ4 = awayTotal - awayQ1to3Sum
 
-  for (const format of formats) {
-    const homeFiltered = format.home.filter((n): n is number => n !== undefined)
-    const awayFiltered = format.away.filter((n): n is number => n !== undefined)
-
-    if (homeFiltered.length !== 4 || awayFiltered.length !== 4) continue
-
-    const homeSum = homeFiltered.reduce((a, b) => a + b, 0)
-    const awaySum = awayFiltered.reduce((a, b) => a + b, 0)
-    const diff = Math.abs(homeSum - homeTotal) + Math.abs(awaySum - awayTotal)
-
-    if (diff < bestDiff) {
-      bestDiff = diff
-      bestFormat = { home: homeFiltered, away: awayFiltered }
+      return {
+        home: bestFormat.home,
+        away: [...bestFormat.away.slice(0, 3), calculatedAwayQ4]
+      }
     }
   }
 
-  if (!bestFormat) {
-    return { home: [], away: [] }
+  // For partial game data (2-7 quarter scores) - live games in Q1, Q2, Q3
+  // Try to extract what quarters are available
+  const quarterCount = Math.floor(validScores.length / 2)
+
+  if (quarterCount >= 1) {
+    // Try different formats for partial data
+    const partialFormats = [
+      // Sequential: home quarters first, then away quarters
+      {
+        home: validScores.slice(0, quarterCount),
+        away: validScores.slice(quarterCount, quarterCount * 2)
+      },
+      // Interleaved: h1,a1,h2,a2,...
+      {
+        home: validScores.filter((_, i) => i % 2 === 0).slice(0, quarterCount),
+        away: validScores.filter((_, i) => i % 2 === 1).slice(0, quarterCount)
+      }
+    ]
+
+    // Find format where sums are closest to totals
+    let bestPartialFormat: { home: number[]; away: number[] } | null = null
+    let bestPartialDiff = Infinity
+
+    for (const format of partialFormats) {
+      const homeFiltered = format.home.filter((n): n is number => n !== undefined)
+      const awayFiltered = format.away.filter((n): n is number => n !== undefined)
+
+      if (homeFiltered.length === 0 || awayFiltered.length === 0) continue
+
+      const homeSum = homeFiltered.reduce((a, b) => a + b, 0)
+      const awaySum = awayFiltered.reduce((a, b) => a + b, 0)
+
+      // For partial data, we expect sums to be close to or equal to totals
+      // (since we might only have completed quarters)
+      const diff = Math.abs(homeSum - homeTotal) + Math.abs(awaySum - awayTotal)
+
+      if (diff < bestPartialDiff) {
+        bestPartialDiff = diff
+        bestPartialFormat = { home: homeFiltered, away: awayFiltered }
+      }
+    }
+
+    if (bestPartialFormat) {
+      return bestPartialFormat
+    }
   }
 
-  // Calculate Q4 for away team from total (source data often has corrupted Q4)
-  // awayQ4 = awayTotal - (awayQ1 + awayQ2 + awayQ3)
-  const awayQ1to3Sum = bestFormat.away.slice(0, 3).reduce((a, b) => a + b, 0)
-  const calculatedAwayQ4 = awayTotal - awayQ1to3Sum
-
-  return {
-    home: bestFormat.home,
-    away: [...bestFormat.away.slice(0, 3), calculatedAwayQ4]
-  }
+  return { home: [], away: [] }
 }
 
 export function parseMatchesFromHtml(html: string): MatchScore[] {

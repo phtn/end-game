@@ -16,14 +16,14 @@ export const Score = ({ id, score }: ScoreProps) => {
 
 interface TimePeriodProps {
   period: string
-  timeRemaining: string
+  timeRemaining?: string
 }
 
 export const TimePeriod = ({ period, timeRemaining }: TimePeriodProps) => {
   return (
     <div className='flex flex-col items-center gap-0'>
       <div className='text-sm font-semibold font-polysans uppercase'>{period}</div>
-      <div className='text-xs font-brk text-foreground'>{timeRemaining}</div>
+      {timeRemaining && <div className='text-xs font-brk text-foreground'>{timeRemaining}</div>}
     </div>
   )
 }

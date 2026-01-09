@@ -82,8 +82,8 @@ export default function Home() {
                         <div className='flex items-center justify-between gap-12 md:gap-8'>
                           <PrimaryTeam {...homeTeam} />
                           <TimePeriod
-                            period={game.period?.split(' ')[0] ?? 'Final'}
-                            timeRemaining={game.time ?? '0:00'}
+                            period={game.status === 'finished' ? 'Final' : game.period ?? 'Live'}
+                            timeRemaining={game.status === 'finished' ? '' : game.time}
                           />
                           <PrimaryTeam {...awayTeam} />
                         </div>
