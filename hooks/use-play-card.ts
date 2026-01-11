@@ -17,6 +17,7 @@ interface PlayCardState {
   getItem: (id: string) => PlayCardItem | undefined
   setItem: (item: PlayCardItem) => void
   deleteItem: (id: string) => void
+  clearAll: () => void
   getStats: () => {
     filledCount: number
     totalAmount: number
@@ -78,6 +79,11 @@ export const usePlayCard = create<PlayCardState>((set, get) => ({
     delete newItems[id]
     set({ items: newItems })
     saveToStorage(newItems)
+  },
+
+  clearAll: () => {
+    set({ items: {} })
+    saveToStorage({})
   },
 
   getStats: () => {

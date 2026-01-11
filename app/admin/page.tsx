@@ -1,5 +1,6 @@
 'use client'
 
+import { EndingManager } from '@/components/admin/ending-manager'
 import { GamesManager } from '@/components/admin/games-manager'
 import LeagueManager from '@/components/admin/league-manager'
 import { QueryManager } from '@/components/admin/query-manager'
@@ -14,7 +15,7 @@ export default function AdminDashboard() {
   const tabs: Array<BaseTabs.Tab.Props> = [
     {
       value: 'leagues',
-      children: 'Leagues',
+      children: 'League',
       className: 'data-[state=active]:bg-blue-600'
     },
     {
@@ -31,6 +32,11 @@ export default function AdminDashboard() {
       value: 'query',
       children: 'Query',
       className: 'data-active:bg-blue-600'
+    },
+    {
+      value: 'e',
+      children: '🅔',
+      className: 'data-active:bg-blue-600'
     }
   ]
 
@@ -38,7 +44,8 @@ export default function AdminDashboard() {
     leagues: <LeagueManager />,
     teams: <TeamManager />,
     games: <GamesManager />,
-    ending: <QueryManager />
+    query: <QueryManager />,
+    ending: <EndingManager />
   }
 
   return (
@@ -47,7 +54,7 @@ export default function AdminDashboard() {
       {/* Content */}
       <main className='max-w-6xl mx-auto px-4 py-8 md:py-0'>
         <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
-          <TabsList className='grid w-full grid-cols-4 h-12 dark rounded-none'>
+          <TabsList className='grid w-full grid-cols-5 h-12 dark rounded-none'>
             {tabs.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value} className='rounded-none font-polysans font-medium text-sm'>
                 {tab.children}
