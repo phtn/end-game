@@ -25,7 +25,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='en'>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased size-screen overflow-x-hidden`}>
         <NuqsAdapter>{children}</NuqsAdapter>
       </body>
     </html>

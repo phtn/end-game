@@ -10,7 +10,7 @@ import { CldImage } from 'next-cloudinary'
 import { useState } from 'react'
 import { SectionHeader } from '../ui/section-header'
 
-export const EndingManager = () => {
+export const GamesManager = () => {
   const { leagues, games, deleteGame } = useAppStore()
   const [isAdding, setIsAdding] = useState(false)
   const [selectedLeague, setSelectedLeague] = useState<string | null>(null)
@@ -85,13 +85,11 @@ export const EndingManager = () => {
               type='date'
               value={newGame.date}
               onChange={(e) => setNewGame({ ...newGame, date: e.target.value })}
-              className='bg-zinc-700 border-zinc-600 text-white'
             />
             <Input
               type='time'
               value={newGame.time}
               onChange={(e) => setNewGame({ ...newGame, time: e.target.value })}
-              className='bg-zinc-700 border-zinc-600 text-white'
             />
             <Button onClick={undefined} className='w-full bg-green-600 hover:bg-green-700'>
               Upload Card

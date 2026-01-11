@@ -2,12 +2,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { useScores } from '@/hooks/use-scores'
 import type { MatchScore } from '@/lib/radon/extractor'
-import { cn } from '@/lib/utils'
-import { startTransition, useEffect, useState, useRef } from 'react'
 import { useAppStore, type Game } from '@/lib/store'
-import { findTeamByName, getLeagueIdFromFilter } from '@/lib/utils/team-matcher'
-import { TeamSelectorDialog } from './team-selector-dialog'
+import { cn } from '@/lib/utils'
 import { debugQuarterScores } from '@/lib/utils/debug-quarter-scores'
+import { findTeamByName, getLeagueIdFromFilter } from '@/lib/utils/team-matcher'
+import { startTransition, useEffect, useRef, useState } from 'react'
+import { TeamSelectorDialog } from './team-selector-dialog'
 
 interface GamesQueryProps {
   date?: string
@@ -25,7 +25,7 @@ export const GamesQuery = ({ date, live, filter }: GamesQueryProps = {}) => {
     startTransition(() => {
       setActiveFilter(filterType)
       const params: { tournament: string; date?: string; live?: boolean; filter?: string } = { tournament: '' }
-      
+
       if (filterType === 'euro') {
         params.tournament = '138'
       } else if (filterType === 'pba') {
@@ -52,7 +52,7 @@ export const GamesQuery = ({ date, live, filter }: GamesQueryProps = {}) => {
   // Initial fetch on mount
   useEffect(() => {
     if (!hasInitialized.current) {
-    startTransition(() => {
+      startTransition(() => {
         const params: { date?: string; live?: boolean; filter?: string } = {}
         if (date) params.date = date
         if (live !== undefined) params.live = live
@@ -68,7 +68,7 @@ export const GamesQuery = ({ date, live, filter }: GamesQueryProps = {}) => {
     if (hasInitialized.current) {
       startTransition(() => {
         const params: { tournament?: string; date?: string; live?: boolean; filter?: string } = {}
-        
+
         // Preserve active filter
         if (activeFilter === 'euro') {
           params.tournament = '138'
@@ -77,12 +77,12 @@ export const GamesQuery = ({ date, live, filter }: GamesQueryProps = {}) => {
         } else if (activeFilter === 'nba') {
           params.tournament = '132'
         }
-        
+
         // Apply date, live, and filter from props
         if (date) params.date = date
         if (live !== undefined) params.live = live
         if (filter) params.filter = filter
-        
+
         fetchScores(params)
       })
     }
@@ -93,14 +93,14 @@ export const GamesQuery = ({ date, live, filter }: GamesQueryProps = {}) => {
     <div className='space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500'>
       <div className='flex flex-wrap items-center justify-between gap-4'>
         <div className='flex items-center gap-2 p-1 rounded-lg backdrop-blur-sm'>
-          <FilterButton active={activeFilter === 'euro'} onClick={() => handleFetch('euro')}>
-            All Games
-          </FilterButton>
           <FilterButton active={activeFilter === 'pba'} onClick={() => handleFetch('pba')}>
             PBA
           </FilterButton>
           <FilterButton active={activeFilter === 'nba'} onClick={() => handleFetch('nba')}>
             NBA
+          </FilterButton>
+          <FilterButton active={activeFilter === 'euro'} onClick={() => handleFetch('euro')}>
+            Europe
           </FilterButton>
         </div>
 
@@ -109,29 +109,29 @@ export const GamesQuery = ({ date, live, filter }: GamesQueryProps = {}) => {
             variant='ghost'
             size='sm'
             onClick={() => setShowDebug(!showDebug)}
-            className='text-muted-foreground hover:text-foreground transition-colors'>
+            className='text-indigo-200 md:hover:bg-indigo-500/10 md:hover:text-indigo-300 font-brk transition-colors'>
             {showDebug ? 'Hide' : 'Show'} Debug
           </Button>
           <Button
             variant='ghost'
             size='sm'
             onClick={() => startTransition(() => reset())}
-            className='text-muted-foreground hover:text-foreground transition-colors'>
+            className='text-rose-200 md:hover:bg-rose-500/10 font-brk font-normal md:hover:text-rose-400 transition-colors'>
             Reset
           </Button>
         </div>
       </div>
 
       {showDebug && (
-        <div className='p-1 border border-border/40 bg-muted/20 rounded-lg text-xs font-mono space-y-2'>
+        <div className='p-1 text-white border border-indigo-200/40 bg-muted/10 rounded-lg text-xs font-mono space-y-2'>
           <div className='font-semibold text-sm mb-2'>Debug Info:</div>
 
           <div className='mb-4 pb-4 border-b border-border/40'>
-            <div className='font-semibold mb-1'>Query Parameters:</div>
+            <div className='font-medium mb-1'>Query Parameters:</div>
             <div className='pl-0 space-y-1 text-white'>
               <div className='break-all overflow-wrap-anywhere word-break-break-all'>
                 <span className='text-muted-foreground'>URL:</span>{' '}
-                <span className='text-foreground select-all'>{lastUrl || 'N/A'}</span>
+                <span className='text-indigo-400 select-all'>{lastUrl || 'N/A'}</span>
               </div>
               <div>
                 <span className='text-muted-foreground'>Tournament:</span> {lastQueryParams?.tournament || 'None'}
@@ -165,16 +165,16 @@ export const GamesQuery = ({ date, live, filter }: GamesQueryProps = {}) => {
                 : null
 
               return (
-              <div key={i} className='pl-4 border-l-2 border-border/40 mt-2'>
-                <div>Match {i + 1}:</div>
-                <div className='pl-2'>
-                  <div>
-                    Home: &quot;{match.homeTeam}&quot; ({match.homeScore})
-                  </div>
-                  <div>
-                    Away: &quot;{match.awayTeam}&quot; ({match.awayScore})
-                  </div>
-                  <div>Status: {match.status}</div>
+                <div key={i} className='pl-4 border-l-2 border-border/40 mt-2'>
+                  <div>Match {i + 1}:</div>
+                  <div className='pl-2'>
+                    <div>
+                      Home: &quot;{match.homeTeam}&quot; ({match.homeScore})
+                    </div>
+                    <div>
+                      Away: &quot;{match.awayTeam}&quot; ({match.awayScore})
+                    </div>
+                    <div>Status: {match.status}</div>
                     {(match.period || match.timeRemaining) && (
                       <div>
                         Period: {match.period || 'N/A'}, Time: {match.timeRemaining || 'N/A'}
@@ -188,7 +188,7 @@ export const GamesQuery = ({ date, live, filter }: GamesQueryProps = {}) => {
                             Home: [{match.quarterScores.home.join(', ')}] (Sum:{' '}
                             {match.quarterScores.home.reduce((a, b) => a + b, 0)})
                           </div>
-                    <div>
+                          <div>
                             Away: [{match.quarterScores.away.join(', ')}] (Sum:{' '}
                             {match.quarterScores.away.reduce((a, b) => a + b, 0)})
                           </div>
@@ -208,7 +208,10 @@ export const GamesQuery = ({ date, live, filter }: GamesQueryProps = {}) => {
                           <div className='text-xs font-semibold mb-1'>Debug Info:</div>
                           <div className='text-xs text-muted-foreground/80 space-y-0.5'>
                             <div>Raw scores: [{debugInfo.rawScores.join(', ')}]</div>
-                            <div>Valid scores (10-45): [{debugInfo.validScores.join(', ')}] ({debugInfo.validScores.length} found)</div>
+                            <div>
+                              Valid scores (10-45): [{debugInfo.validScores.join(', ')}] ({debugInfo.validScores.length}{' '}
+                              found)
+                            </div>
                             {debugInfo.formatAnalysis.length > 0 && (
                               <div className='mt-1'>
                                 <div className='font-semibold mb-0.5'>Format Analysis:</div>
@@ -220,10 +223,10 @@ export const GamesQuery = ({ date, live, filter }: GamesQueryProps = {}) => {
                               </div>
                             )}
                           </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
+                  </div>
                 </div>
               )
             })}
@@ -271,16 +274,16 @@ const FilterButton = ({
   children: React.ReactNode
   onClick: () => void
 }) => (
-  <button
+  <Button
     onClick={onClick}
     className={cn(
-      'px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ease-out',
+      'px-4 py-1.5 text-sm font-polysans rounded-md transition-all duration-200 ease-out',
       active
-        ? 'bg-background text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/10'
-        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+        ? 'bg-background hover:bg-white/20 hover:text-emerald-500 text-foreground/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+        : 'text-white/60 hover:text-white hover:bg-white/20'
     )}>
     {children}
-  </button>
+  </Button>
 )
 
 const MatchCard = ({
@@ -365,7 +368,7 @@ const MatchCard = ({
     }
 
     return {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       leagueId,
       homeTeamId,
       awayTeamId,
@@ -495,14 +498,10 @@ const MatchCard = ({
         {(match.period || match.timeRemaining) && (
           <div className='flex items-center gap-2'>
             {match.period && (
-              <span className='text-xs font-semibold font-polysans uppercase text-foreground'>
-                {match.period}
-              </span>
+              <span className='text-xs font-semibold font-polysans uppercase text-foreground'>{match.period}</span>
             )}
             {match.timeRemaining && (
-              <span className='text-xs font-brk text-muted-foreground'>
-                {match.timeRemaining}
-              </span>
+              <span className='text-xs font-brk text-muted-foreground'>{match.timeRemaining}</span>
             )}
           </div>
         )}
@@ -510,7 +509,7 @@ const MatchCard = ({
       <CardContent className='p-5'>
         <div className='flex items-center justify-between gap-6'>
           <TeamDisplay name={match.homeTeam} score={match.homeScore} isWinner={match.homeScore > match.awayScore} />
-          <div className='text-muted-foreground font-brk text-xs opacity-30'>VS</div>
+          <div className='text-red-700 font-brk text-xs opacity-80'>VS</div>
           <TeamDisplay
             name={match.awayTeam}
             score={match.awayScore}

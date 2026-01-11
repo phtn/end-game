@@ -1,8 +1,8 @@
 'use client'
 
-import { EndingManager } from '@/components/admin/ending-manager'
-import GameManager from '@/components/admin/game-manager'
+import { GamesManager } from '@/components/admin/games-manager'
 import LeagueManager from '@/components/admin/league-manager'
+import { QueryManager } from '@/components/admin/query-manager'
 import TeamManager from '@/components/admin/team-manager'
 import { Header } from '@/components/ui/header'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -28,8 +28,8 @@ export default function AdminDashboard() {
       className: 'data-[state=active]:bg-blue-600'
     },
     {
-      value: 'ending',
-      children: 'Ending',
+      value: 'query',
+      children: 'Query',
       className: 'data-active:bg-blue-600'
     }
   ]
@@ -37,12 +37,12 @@ export default function AdminDashboard() {
   const contents = {
     leagues: <LeagueManager />,
     teams: <TeamManager />,
-    games: <GameManager />,
-    ending: <EndingManager />
+    games: <GamesManager />,
+    ending: <QueryManager />
   }
 
   return (
-    <div className='min-h-screen bg-linear-to-b from-zinc-900 to-zinc-950'>
+    <div className='min-h-screen w-screen overflow-hidden bg-linear-to-b from-zinc-900 to-zinc-950'>
       <Header title='config' icon='x' href='/' className='md:border-b-0' />
       {/* Content */}
       <main className='max-w-6xl mx-auto px-4 py-8 md:py-0'>

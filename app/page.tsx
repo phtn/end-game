@@ -5,20 +5,20 @@ import { QuarterScore, Score, TimePeriod } from '@/components/game/team'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { PrimaryTeam } from '@/components/ui/primary-team'
+import { useDefaultGame } from '@/hooks/use-default-game'
+import { useLiveGameSync } from '@/hooks/use-live-game-sync'
 import { Icon } from '@/lib/icons'
 import { useAppStore } from '@/lib/store'
 import { CldImage as Cim } from 'next-cloudinary'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { useLiveGameSync } from '@/hooks/use-live-game-sync'
-import { useDefaultGame } from '@/hooks/use-default-game'
 
 export default function Home() {
   const { leagues, games } = useAppStore()
-  
+
   // Add default game (second PBA game) if no games exist
   useDefaultGame()
-  
+
   // Sync live games with API
   useLiveGameSync()
 
@@ -65,7 +65,7 @@ export default function Home() {
                 height={50}
                 src={league?.logo || '/placeholder.svg'}
                 alt={league?.name}
-                className='w-10 md:w-16 object-cover'
+                className='w-10 md:w-10 object-cover'
               />
             )}
           </div>
@@ -80,6 +80,7 @@ export default function Home() {
       {/* Main Content */}
       <main className='max-w-7xl mx-auto px-1 md:px-6 md:py-0 space-y-0 border-none'>
         {/* Live Games Section */}
+        {/*<ScrollArea>*/}
         <section className='shadow-none'>
           {liveGames.length > 0 ? (
             <div className='space-y-8'>
@@ -100,16 +101,15 @@ export default function Home() {
                                 : // Detect period from quarter scores first (most reliable)
                                   // qN existing means QN is currently in progress
                                   game.homeTeamScore.q4 !== undefined || game.awayTeamScore.q4 !== undefined
-                                    ? 'Q4'
-                                    : game.homeTeamScore.q3 !== undefined || game.awayTeamScore.q3 !== undefined
-                                      ? 'Q3'
-                                      : game.homeTeamScore.q2 !== undefined || game.awayTeamScore.q2 !== undefined
-                                        ? 'Q2'
-                                        : game.homeTeamScore.q1 !== undefined || game.awayTeamScore.q1 !== undefined
-                                          ? 'Q1'
-                                          : // Fallback to explicit period or status
-                                            game.period ||
-                                            (game.status === 'scheduled' ? 'Scheduled' : 'Q1')
+                                  ? 'Q4'
+                                  : game.homeTeamScore.q3 !== undefined || game.awayTeamScore.q3 !== undefined
+                                    ? 'Q3'
+                                    : game.homeTeamScore.q2 !== undefined || game.awayTeamScore.q2 !== undefined
+                                      ? 'Q2'
+                                      : game.homeTeamScore.q1 !== undefined || game.awayTeamScore.q1 !== undefined
+                                        ? 'Q1'
+                                        : // Fallback to explicit period or status
+                                          game.period || (game.status === 'scheduled' ? 'Scheduled' : 'Q1')
                             }
                             timeRemaining={
                               game.status === 'finished'
@@ -139,6 +139,7 @@ export default function Home() {
             </Card>
           )}
         </section>
+        {/*</ScrollArea>*/}
         <Suspense fallback={<div>Loading...</div>}>
           <AnalysisCard />
         </Suspense>

@@ -8,7 +8,7 @@ interface ScoreProps {
 
 export const Score = ({ id, score }: ScoreProps) => {
   return (
-    <div id={id} className='flex-1 flex justify-center'>
+    <div id={id} className='flex w-full max-w-22 md:max-w-91 flex-1 justify-center'>
       <div className='select-none text-4xl font-brk font-light tracking-tight text-primary leading-none'>{score}</div>
     </div>
   )
@@ -21,7 +21,7 @@ interface TimePeriodProps {
 
 export const TimePeriod = ({ period, timeRemaining }: TimePeriodProps) => {
   return (
-    <div className='flex flex-col items-center gap-0'>
+    <div className='flex flex-1 flex-col items-center gap-0 w-full'>
       <div className='text-sm font-semibold font-polysans uppercase'>{period}</div>
       {timeRemaining && <div className='text-xs font-brk text-foreground'>{timeRemaining}</div>}
     </div>
@@ -34,7 +34,7 @@ interface QuarterScoreProps {
 
 export const QuarterScore = ({ game }: QuarterScoreProps) => {
   return (
-    <div className='flex flex-col items-start gap-y-0.5'>
+    <div className='flex flex-1 flex-col w-full items-center gap-y-0.5'>
       <div className='flex items-center gap-x-1 text-xs font-brk uppercase border-b border-zinc-500/0 border-dotted'>
         <TeamId id={game.homeTeamId} />
         <ScoresRow score={game.homeTeamScore} />
@@ -68,7 +68,7 @@ const ScoresRow = ({ score }: ScorePropssRow) => {
       {scores.map((value, i) => (
         <div
           key={`score-${i}`}
-          className={cn(`w-5 md:w-6 text-right ${i === 4 ? 'font-bold w-6' : ''}`, {
+          className={cn(`w-5 md:w-8 text-right ${i === 4 ? 'font-bold w-6 md:w-10' : ''}`, {
             'bg-zinc-50 rounded-sm': value === null
           })}>
           {value ?? ''}

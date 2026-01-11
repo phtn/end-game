@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist, createJSONStorage } from 'zustand/middleware'
+import { createJSONStorage, persist } from 'zustand/middleware'
 
 export interface Team {
   id: string
@@ -105,37 +105,37 @@ const initialLeagues = {
         id: 'no',
         name: 'New Orleans Pelicans',
         abbreviation: 'NOP',
-        logo: 'https://upload.wikimedia.org/wikipedia/en/0/0d/New_Orleans_Pelicans_logo.svg'
+        logo: 'https://res.cloudinary.com/dx0heqhhe/image/upload/v1767856225/nba-logo_n5ozos.svg'
       },
       {
         id: 'dal',
         name: 'Dallas Mavericks',
         abbreviation: 'DAL',
-        logo: 'https://content.sportslogos.net/logos/6/228/full/ifk08eam05rwxr3yhol3whdcm.png'
+        logo: 'https://res.cloudinary.com/dx0heqhhe/image/upload/v1767856225/nba-logo_n5ozos.svg'
       },
       {
         id: 'mem',
         name: 'Memphis Grizzlies',
         abbreviation: 'MEM',
-        logo: 'https://content.sportslogos.net/logos/6/231/full/793.png'
+        logo: 'https://res.cloudinary.com/dx0heqhhe/image/upload/v1767856225/nba-logo_n5ozos.svg'
       },
       {
         id: 'mia',
         name: 'Miami Heat',
         abbreviation: 'MIA',
-        logo: 'https://upload.wikimedia.org/wikipedia/en/f/fb/Miami_Heat_logo.svg'
+        logo: 'https://res.cloudinary.com/dx0heqhhe/image/upload/v1767856225/nba-logo_n5ozos.svg'
       },
       {
         id: 'lac',
         name: 'Los Angeles Clippers',
         abbreviation: 'LAC',
-        logo: 'https://upload.wikimedia.org/wikipedia/en/9/9d/Los_Angeles_Clippers_%282015%29_logo.svg'
+        logo: 'https://res.cloudinary.com/dx0heqhhe/image/upload/v1767856225/nba-logo_n5ozos.svg'
       },
       {
         id: 'gsw',
         name: 'Golden State Warriors',
         abbreviation: 'GSW',
-        logo: 'https://upload.wikimedia.org/wikipedia/en/0/01/Golden_State_Warriors_logo.svg'
+        logo: 'https://res.cloudinary.com/dx0heqhhe/image/upload/v1767856225/nba-logo_n5ozos.svg'
       }
     ]
   }
@@ -149,70 +149,70 @@ export const useAppStore = create<AppState>()(
       leagues: initialLeagues,
       games: initialGames,
 
-  addLeague: (league) =>
-    set((state) => ({
-      leagues: { ...state.leagues, [league.id]: league }
-    })),
+      addLeague: (league) =>
+        set((state) => ({
+          leagues: { ...state.leagues, [league.id]: league }
+        })),
 
-  updateLeague: (id, league) =>
-    set((state) => ({
-      leagues: { ...state.leagues, [id]: league }
-    })),
+      updateLeague: (id, league) =>
+        set((state) => ({
+          leagues: { ...state.leagues, [id]: league }
+        })),
 
-  deleteLeague: (id) =>
-    set((state) => {
-      const newLeagues = { ...state.leagues }
-      delete newLeagues[id]
-      return { leagues: newLeagues }
-    }),
+      deleteLeague: (id) =>
+        set((state) => {
+          const newLeagues = { ...state.leagues }
+          delete newLeagues[id]
+          return { leagues: newLeagues }
+        }),
 
-  addTeamToLeague: (leagueId, team) =>
-    set((state) => ({
-      leagues: {
-        ...state.leagues,
-        [leagueId]: {
-          ...state.leagues[leagueId],
-          teams: [...state.leagues[leagueId].teams, team]
-        }
-      }
-    })),
+      addTeamToLeague: (leagueId, team) =>
+        set((state) => ({
+          leagues: {
+            ...state.leagues,
+            [leagueId]: {
+              ...state.leagues[leagueId],
+              teams: [...state.leagues[leagueId].teams, team]
+            }
+          }
+        })),
 
-  updateTeam: (leagueId, teamId, team) =>
-    set((state) => ({
-      leagues: {
-        ...state.leagues,
-        [leagueId]: {
-          ...state.leagues[leagueId],
-          teams: state.leagues[leagueId].teams.map((t) => (t.id === teamId ? team : t))
-        }
-      }
-    })),
+      updateTeam: (leagueId, teamId, team) =>
+        set((state) => ({
+          leagues: {
+            ...state.leagues,
+            [leagueId]: {
+              ...state.leagues[leagueId],
+              teams: state.leagues[leagueId].teams.map((t) => (t.id === teamId ? team : t))
+            }
+          }
+        })),
 
-  deleteTeam: (leagueId, teamId) =>
-    set((state) => ({
-      leagues: {
-        ...state.leagues,
-        [leagueId]: {
-          ...state.leagues[leagueId],
-          teams: state.leagues[leagueId].teams.filter((t) => t.id !== teamId)
-        }
-      }
-    })),
+      deleteTeam: (leagueId, teamId) =>
+        set((state) => ({
+          leagues: {
+            ...state.leagues,
+            [leagueId]: {
+              ...state.leagues[leagueId],
+              teams: state.leagues[leagueId].teams.filter((t) => t.id !== teamId)
+            }
+          }
+        })),
 
-  addGame: (game) =>
-    set((state) => ({
-      games: [...state.games, game]
-    })),
+      addGame: (game) =>
+        set((state) => ({
+          games: [...state.games, game]
+        })),
 
-  updateGame: (id, game) =>
-    set((state) => ({
-      games: state.games.map((g) => (g.id === id ? game : g))
-    })),
+      updateGame: (id, game) =>
+        set((state) => ({
+          games: state.games.map((g) => (g.id === id ? game : g))
+        })),
 
-  deleteGame: (id) =>
-    set((state) => ({
-      games: state.games.filter((g) => g.id !== id)
-    }))
+      deleteGame: (id) =>
+        set((state) => ({
+          games: state.games.filter((g) => g.id !== id)
+        }))
     }),
     {
       name: 'end-game-storage', // unique name for localStorage key
