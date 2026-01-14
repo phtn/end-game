@@ -440,6 +440,51 @@ export function parseMatchesFromHtml(html: string): MatchScore[] {
     const text = btn.textContent ?? ''
     if (!text.includes('Pin match') || text.length < 20) continue
 
+    // Try to find time remaining from clock element with class sr-lmts-clock__time
+    let timeRemainingFromClock: string | undefined
+    // Look for clock element in the button's parent or nearby elements
+    let currentElement: Element | null = btn
+    let searchDepth = 0
+    const maxDepth = 5 // Limit search depth to avoid going too far up the tree
+    
+    while (currentElement && searchDepth < maxDepth) {
+      // Check within current element
+      const clockElement = currentElement.querySelector('.sr-lmts-clock__time')
+      if (clockElement) {
+        const clockText = clockElement.textContent?.trim()
+        if (clockText) {
+          timeRemainingFromClock = clockText
+          break
+        }
+      }
+      // Check if current element itself has the class
+      if (currentElement.classList.contains('sr-lmts-clock__time')) {
+        const clockText = currentElement.textContent?.trim()
+        if (clockText) {
+          timeRemainingFromClock = clockText
+          break
+        }
+      }
+      // Move up the DOM tree
+      currentElement = currentElement.parentElement
+      searchDepth++
+    }
+    
+    // If still not found, check siblings
+    if (!timeRemainingFromClock && btn.parentElement) {
+      const siblings = Array.from(btn.parentElement.children)
+      for (const sibling of siblings) {
+        const clockElement = sibling.querySelector('.sr-lmts-clock__time')
+        if (clockElement) {
+          const clockText = clockElement.textContent?.trim()
+          if (clockText) {
+            timeRemainingFromClock = clockText
+            break
+          }
+        }
+      }
+    }
+
     const parsed = parseMatchText(text)
     if (parsed && parsed.scores.length >= 2) {
       const homeScore = parsed.scores[0]
@@ -458,7 +503,7 @@ export function parseMatchesFromHtml(html: string): MatchScore[] {
           status: parsed.status,
           quarterScores,
           period: parsed.period,
-          timeRemaining: parsed.timeRemaining,
+          timeRemaining: timeRemainingFromClock || parsed.timeRemaining,
           _debug: {
             rawScores: parsed.scores,
             validScores

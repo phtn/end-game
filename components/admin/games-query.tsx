@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { useScores } from '@/hooks/use-scores'
 import type { MatchScore } from '@/lib/radon/extractor'
 import { useAppStore, type Game } from '@/lib/store'
@@ -19,12 +20,13 @@ export const GamesQuery = ({ date, live, filter }: GamesQueryProps = {}) => {
   const { matches, isLoading, isError, error, fetchScores, reset, lastQueryParams, lastUrl } = useScores()
   const [activeFilter, setActiveFilter] = useState<'euro' | 'pba' | 'nba'>('euro')
   const [showDebug, setShowDebug] = useState(false)
+  const [teamNameFilter, setTeamNameFilter] = useState<string>('')
   const hasInitialized = useRef(false)
 
   const handleFetch = (filterType: 'euro' | 'pba' | 'nba') => {
     startTransition(() => {
       setActiveFilter(filterType)
-      const params: { tournament: string; date?: string; live?: boolean; filter?: string } = { tournament: '' }
+      const params: { tournament: string; date?: string; live?: boolean; search?: string; filter?: string } = { tournament: '' }
 
       if (filterType === 'euro') {
         params.tournament = '138'
@@ -35,13 +37,17 @@ export const GamesQuery = ({ date, live, filter }: GamesQueryProps = {}) => {
       }
 
       // Apply date, live, and filter from props if provided
-      if (date) {
-        params.date = date
+      if (date && date.trim()) {
+        params.date = date.trim()
       }
       if (live !== undefined) {
         params.live = live
       }
-      if (filter) {
+      
+      // Use team name input search if provided, otherwise fall back to prop filter
+      if (teamNameFilter.trim()) {
+        params.search = teamNameFilter.trim()
+      } else if (filter) {
         params.filter = filter
       }
 
@@ -53,21 +59,30 @@ export const GamesQuery = ({ date, live, filter }: GamesQueryProps = {}) => {
   useEffect(() => {
     if (!hasInitialized.current) {
       startTransition(() => {
-        const params: { date?: string; live?: boolean; filter?: string } = {}
-        if (date) params.date = date
-        if (live !== undefined) params.live = live
-        if (filter) params.filter = filter
+        const params: { date?: string; live?: boolean; search?: string; filter?: string } = {}
+        if (date && date.trim()) {
+          params.date = date.trim()
+        }
+        if (live !== undefined) {
+          params.live = live
+        }
+        // Prioritize input search over prop filter
+        if (teamNameFilter.trim()) {
+          params.search = teamNameFilter.trim()
+        } else if (filter) {
+          params.filter = filter
+        }
         fetchScores(params)
         hasInitialized.current = true
       })
     }
-  }, [fetchScores, date, live, filter])
+  }, [fetchScores, date, live, filter, teamNameFilter])
 
-  // Refetch when date/live/filter changes, preserving active filter
+  // Refetch when date/live/filter/teamNameFilter changes, preserving active filter
   useEffect(() => {
     if (hasInitialized.current) {
       startTransition(() => {
-        const params: { tournament?: string; date?: string; live?: boolean; filter?: string } = {}
+        const params: { tournament?: string; date?: string; live?: boolean; search?: string; filter?: string } = {}
 
         // Preserve active filter
         if (activeFilter === 'euro') {
@@ -78,16 +93,25 @@ export const GamesQuery = ({ date, live, filter }: GamesQueryProps = {}) => {
           params.tournament = '132'
         }
 
-        // Apply date, live, and filter from props
-        if (date) params.date = date
-        if (live !== undefined) params.live = live
-        if (filter) params.filter = filter
+        // Apply date, live, and search from props or team name input
+        if (date && date.trim()) {
+          params.date = date.trim()
+        }
+        if (live !== undefined) {
+          params.live = live
+        }
+        // Prioritize input search over prop filter
+        if (teamNameFilter.trim()) {
+          params.search = teamNameFilter.trim()
+        } else if (filter) {
+          params.filter = filter
+        }
 
         fetchScores(params)
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, live, filter])
+  }, [date, live, filter, teamNameFilter])
 
   return (
     <div className='space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500'>
@@ -102,6 +126,16 @@ export const GamesQuery = ({ date, live, filter }: GamesQueryProps = {}) => {
           <FilterButton active={activeFilter === 'euro'} onClick={() => handleFetch('euro')}>
             Europe
           </FilterButton>
+        </div>
+
+        <div className='flex items-center gap-2 flex-1 max-w-md'>
+          <Input
+            type='text'
+            placeholder='Filter by team name...'
+            value={teamNameFilter}
+            onChange={(e) => setTeamNameFilter(e.target.value)}
+            className='font-polysans'
+          />
         </div>
 
         <div className='flex items-center gap-2'>
@@ -142,6 +176,9 @@ export const GamesQuery = ({ date, live, filter }: GamesQueryProps = {}) => {
               </div>
               <div>
                 <span className='text-muted-foreground'>Date:</span> {lastQueryParams?.date || 'None'}
+              </div>
+              <div>
+                <span className='text-muted-foreground'>Search:</span> {lastQueryParams?.search || 'None'}
               </div>
               <div>
                 <span className='text-muted-foreground'>Filter:</span> {lastQueryParams?.filter || 'None'}

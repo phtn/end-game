@@ -9,16 +9,7 @@ import { useState } from 'react'
 import { GamesQuery } from './games-query'
 
 export const QueryManager = () => {
-  // Default to today's date in YYYY-MM-DD format
-  const getTodayDate = () => {
-    const today = new Date()
-    const year = today.getFullYear()
-    const month = String(today.getMonth() + 1).padStart(2, '0')
-    const day = String(today.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  }
-
-  const [date, setDate] = useState<string>(getTodayDate())
+  const [date, setDate] = useState<string>('')
   const [live, setLive] = useState<boolean>(false)
   const [filter, setFilter] = useState<number | 'justStarted' | 'aboutToEnd' | 'finished' | undefined>(undefined)
 
@@ -94,7 +85,7 @@ export const QueryManager = () => {
           </div>
         </div>
       </Card>
-      <GamesQuery date={date} live={live} filter={filterValue} />
+      <GamesQuery date={date || undefined} live={live} filter={filterValue} />
     </div>
   )
 }

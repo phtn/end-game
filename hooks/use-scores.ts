@@ -38,7 +38,8 @@ interface FetchScoresOptions {
   tournament?: TournamentKey | string
   live?: boolean
   date?: string
-  filter?: string // e.g., "+12h" for games in next 12 hours
+  search?: string // Team name search parameter
+  filter?: string // e.g., "+12h" for games in next 12 hours (deprecated, use search instead)
 }
 
 export function useScores(): UseScoresReturn {
@@ -61,7 +62,7 @@ export function useScores(): UseScoresReturn {
 
   const fetchScores = useCallback(
     async (options: FetchScoresOptions = {}): Promise<MatchScore[]> => {
-      const { tournament, live = false, date, filter } = options
+      const { tournament, live = false, date, search, filter } = options
 
       let url = SPORT_URL
 
@@ -81,8 +82,12 @@ export function useScores(): UseScoresReturn {
         queryParams.push('status=live')
       }
       
-      if (date) {
-        queryParams.push(`date=${date}`)
+      if (date && date.trim()) {
+        queryParams.push(`date=${date.trim()}`)
+      }
+      
+      if (search) {
+        queryParams.push(`search=${encodeURIComponent(search)}`)
       }
       
       if (filter) {
