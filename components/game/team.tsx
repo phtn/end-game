@@ -1,5 +1,6 @@
 import { Game, Score as IScore } from '@/lib/store'
 import { cn } from '@/lib/utils'
+import { Counter } from '../ui/counter'
 
 interface ScoreProps {
   id: string
@@ -8,8 +9,10 @@ interface ScoreProps {
 
 export const Score = ({ id, score }: ScoreProps) => {
   return (
-    <div id={id} className='flex w-full max-w-22 md:max-w-91 flex-1 justify-center'>
-      <div className='select-none text-4xl font-brk font-light tracking-tight text-primary leading-none'>{score}</div>
+    <div id={id} className='flex w-full max-w-32 md:max-w-91 flex-1 justify-center'>
+      <div className='flex justify-center w-full select-none text-4xl font-brk font-light tracking-tight text-primary leading-none'>
+        <Counter className='w-full px-0' value={score ?? 0} />
+      </div>
     </div>
   )
 }

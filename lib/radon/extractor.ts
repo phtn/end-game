@@ -18,6 +18,14 @@ export interface MatchScore {
   }
 }
 
+export interface GameState {
+  timeRemaining?: string // e.g., "5:35", "2:15", "0:00"
+  period?: string // e.g., "Q1", "Q2", "Q3", "Q4", "HT", "OT"
+  status?: string // e.g., "LIVE", "ENDED", "SCHEDULED"
+  rawHtml?: string // For debugging - the innerHTML of the state container
+  elements?: Record<string, string> // All found elements and their text content
+}
+
 // Known PBA team names for better matching
 const PBA_TEAMS = [
   'S.M. Beermen',
@@ -63,7 +71,14 @@ const PBA_TEAMS = [
 ]
 
 // Parse match text like: "Pin match END S.M. Beermen Barangay Ginebra ‌ 93 ‌ 84 ‌ 12 ‌ 19..."
-function parseMatchText(text: string): { homeTeam: string; awayTeam: string; status: string; scores: number[]; period?: string; timeRemaining?: string } | null {
+function parseMatchText(text: string): {
+  homeTeam: string
+  awayTeam: string
+  status: string
+  scores: number[]
+  period?: string
+  timeRemaining?: string
+} | null {
   // Remove common prefixes and UI elements
   let cleanText = text
     .replace(/^Pin match\s*/i, '')
@@ -85,7 +100,7 @@ function parseMatchText(text: string): { homeTeam: string; awayTeam: string; sta
   const periodWithTimePatterns = [
     { pattern: /\b(Q[1-4])\s*(\d{1,2}:\d{2})\b/i, periodGroup: 1, timeGroup: 2 },
     { pattern: /\b(Q[1-4])\s*(\d{1,2}['′])\b/i, periodGroup: 1, timeGroup: 2 },
-    { pattern: /\b(OT|OVERTIME)\s*(\d{1,2}:\d{2})\b/i, periodGroup: 1, timeGroup: 2 },
+    { pattern: /\b(OT|OVERTIME)\s*(\d{1,2}:\d{2})\b/i, periodGroup: 1, timeGroup: 2 }
   ]
 
   for (const { pattern, periodGroup, timeGroup } of periodWithTimePatterns) {
@@ -114,7 +129,7 @@ function parseMatchText(text: string): { homeTeam: string; awayTeam: string; sta
       { pattern: /\b(HT|HALFTIME|HALF[-\s]?TIME)\b/i },
       { pattern: /\b(1ST\s*HALF|2ND\s*HALF)\b/i },
       { pattern: /\bHALF\b/i },
-      { pattern: /\b(OT|OVERTIME)\b/i },
+      { pattern: /\b(OT|OVERTIME)\b/i }
     ]
 
     for (const { pattern } of periodOnlyPatterns) {
@@ -140,7 +155,7 @@ function parseMatchText(text: string): { homeTeam: string; awayTeam: string; sta
   if (!timeRemaining) {
     const timeOnlyPatterns = [
       /\b(\d{1,2}:\d{2})\b/, // 5:35 format
-      /\b(\d{1,2})['′]\b/, // 5' format
+      /\b(\d{1,2})['′]\b/ // 5' format
     ]
 
     for (const pattern of timeOnlyPatterns) {
@@ -178,7 +193,7 @@ function parseMatchText(text: string): { homeTeam: string; awayTeam: string; sta
     { pattern: /\b(HT|HALFTIME|HALF[-\s]?TIME)\b/i, status: 'HT' },
     { pattern: /\bQ([1-4])\b/i, status: 'LIVE' },
     { pattern: /\bOT\b/i, status: 'LIVE' },
-    { pattern: /\bLIVE\b/i, status: 'LIVE' }, // Check LIVE last
+    { pattern: /\bLIVE\b/i, status: 'LIVE' } // Check LIVE last
   ]
 
   for (const { pattern, status: matchedStatus } of statusPatterns) {
@@ -446,7 +461,7 @@ export function parseMatchesFromHtml(html: string): MatchScore[] {
     let currentElement: Element | null = btn
     let searchDepth = 0
     const maxDepth = 5 // Limit search depth to avoid going too far up the tree
-    
+
     while (currentElement && searchDepth < maxDepth) {
       // Check within current element
       const clockElement = currentElement.querySelector('.sr-lmts-clock__time')
@@ -469,7 +484,7 @@ export function parseMatchesFromHtml(html: string): MatchScore[] {
       currentElement = currentElement.parentElement
       searchDepth++
     }
-    
+
     // If still not found, check siblings
     if (!timeRemainingFromClock && btn.parentElement) {
       const siblings = Array.from(btn.parentElement.children)
@@ -629,4 +644,151 @@ export function extractScores(html: string): number[] {
   }
 
   return scores
+}
+
+/**
+ * Extract game state and time remaining from elements with class sr-lmts-state
+ * This function looks for the parent div with class sr-lmts-state and extracts
+ * all relevant information about the game state, period, and time remaining.
+ */
+export function extractGameStateFromHtml(html: string): GameState[] {
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(html, 'text/html')
+
+  const gameStates: GameState[] = []
+  const body = doc.querySelector('body')
+  const app = doc?.getElementsByClassName('sr-*')
+  console.log('[APP]:', app)
+  // const stateContainers = app?.getElementsBy('.sr-lmts-state')
+  if (!app) return []
+
+  for (const container of app) {
+    const state: GameState = {
+      elements: {}
+    }
+
+    // Store raw HTML for debugging
+    state.rawHtml = container.innerHTML
+
+    // Extract all text content from the container
+    const allText = container.textContent?.trim() ?? ''
+
+    // Look for time remaining in various formats
+    // Check for clock elements first
+    const clockElement = container.querySelector('.sr-lmts-clock__time')
+    if (clockElement) {
+      const clockText = clockElement.textContent?.trim()
+      if (clockText) {
+        state.timeRemaining = clockText
+        state.elements!['clock'] = clockText
+      }
+    }
+
+    // Look for time patterns in text (e.g., "5:35", "2:15", "0:00")
+    if (!state.timeRemaining) {
+      const timePatterns = [
+        /\b(\d{1,2}:\d{2})\b/, // Standard time format
+        /\b(\d{1,2})['′]\b/ // Minutes only format
+      ]
+
+      for (const pattern of timePatterns) {
+        const match = allText.match(pattern)
+        if (match && match[1]) {
+          const time = match[1]
+          // Validate it looks like a game time (not a score)
+          if (time.includes(':')) {
+            const [mins] = time.split(':').map(Number)
+            if (mins !== undefined && mins < 15) {
+              state.timeRemaining = time
+              break
+            }
+          } else {
+            const mins = parseInt(time)
+            if (mins < 15) {
+              state.timeRemaining = time
+              break
+            }
+          }
+        }
+      }
+    }
+
+    // Look for period information (Q1, Q2, Q3, Q4, HT, OT)
+    const periodPatterns = [
+      /\b(Q[1-4])\b/i,
+      /\b(HT|HALFTIME|HALF[-\s]?TIME)\b/i,
+      /\b(OT|OVERTIME)\b/i,
+      /\b(1ST\s*HALF|2ND\s*HALF)\b/i
+    ]
+
+    for (const pattern of periodPatterns) {
+      const match = allText.match(pattern)
+      if (match) {
+        const matchedPeriod = (match[1] || match[0]).toUpperCase()
+        if (matchedPeriod.match(/^Q[1-4]/)) {
+          state.period = matchedPeriod
+        } else if (matchedPeriod.match(/^(HT|HALFTIME|HALF)/i)) {
+          state.period = 'HT'
+        } else if (matchedPeriod.match(/^(1ST|2ND)\s*HALF/i)) {
+          state.period = 'HT'
+        } else if (matchedPeriod.match(/^(OT|OVERTIME)/i)) {
+          state.period = 'OT'
+        }
+        break
+      }
+    }
+
+    // Look for status (LIVE, END, ENDED, FINAL, etc.)
+    const statusPatterns = [
+      { pattern: /\b(ENDED|END)\b/i, status: 'ENDED' },
+      { pattern: /\bFINAL\b/i, status: 'ENDED' },
+      { pattern: /\bLIVE\b/i, status: 'LIVE' },
+      { pattern: /\bSCHEDULED\b/i, status: 'SCHEDULED' }
+    ]
+
+    for (const { pattern, status: matchedStatus } of statusPatterns) {
+      if (pattern.test(allText)) {
+        state.status = matchedStatus
+        break
+      }
+    }
+
+    // If we found a period but no status, assume it's LIVE
+    if (state.period && !state.status) {
+      state.status = 'LIVE'
+    }
+
+    // Extract all child elements and their text content for debugging
+    const allElements = container.querySelectorAll('*')
+    for (const el of allElements) {
+      const className = el.className?.toString() || ''
+      const text = el.textContent?.trim() || ''
+
+      if (className && text) {
+        // Store element info by class name (take first class if multiple)
+        const firstClass = className.split(/\s+/)[0]
+        if (firstClass && !state.elements![firstClass]) {
+          state.elements![firstClass] = text
+        }
+      }
+    }
+
+    // Also store direct child text nodes
+    const directChildren = Array.from(container.children)
+    for (const child of directChildren) {
+      const className = child.className?.toString() || ''
+      const text = child.textContent?.trim() || ''
+
+      if (className && text) {
+        const firstClass = className.split(/\s+/)[0]
+        if (firstClass) {
+          state.elements![firstClass] = text
+        }
+      }
+    }
+
+    gameStates.push(state)
+  }
+
+  return gameStates
 }

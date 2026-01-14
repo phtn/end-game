@@ -1,8 +1,7 @@
-import { useEffect, useRef } from 'react'
 import { useAppStore, type Game } from '@/lib/store'
-import { useScores } from './use-scores'
 import { findTeamByName } from '@/lib/utils/team-matcher'
-import { startTransition } from 'react'
+import { startTransition, useEffect, useRef } from 'react'
+import { useScores } from './use-scores'
 
 /**
  * Hook to sync live games with API data
@@ -13,22 +12,43 @@ export function useLiveGameSync() {
   const { fetchScores } = useScores()
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const isPollingRef = useRef(false)
+  const fetchScoresRef = useRef(fetchScores)
+  const updateGameRef = useRef(updateGame)
+
+  // Keep refs updated
+  useEffect(() => {
+    fetchScoresRef.current = fetchScores
+    updateGameRef.current = updateGame
+  }, [fetchScores, updateGame])
 
   // Calculate live games count for dependency tracking
   const liveGamesCount = games.filter((g) => g.status === 'live').length
 
   // Set up polling for live games
   useEffect(() => {
+    // console.log('[LiveSync] Effect running, liveGamesCount:', liveGamesCount)
+
     const syncLiveGames = async () => {
-      if (isPollingRef.current) return // Prevent concurrent syncs
+      if (isPollingRef.current) {
+        // console.log('[LiveSync] Sync already in progress, skipping')
+        return // Prevent concurrent syncs
+      }
       isPollingRef.current = true
+      // console.log('[LiveSync] Starting sync...')
 
       try {
         const currentGames = useAppStore.getState().games
         const currentLeagues = useAppStore.getState().leagues
         const liveGames = currentGames.filter((g) => g.status === 'live')
+        // console.log(
+        //   '[LiveSync] Found',
+        //   liveGames.length,
+        //   'live games:',
+        //   liveGames.map((g) => ({ id: g.id, home: g.homeTeamId, away: g.awayTeamId }))
+        // )
 
         if (liveGames.length === 0) {
+          // console.log('[LiveSync] No live games found, skipping sync')
           isPollingRef.current = false
           return
         }
@@ -58,8 +78,8 @@ export function useLiveGameSync() {
           if (!tournament) continue
 
           try {
-            const matches = await fetchScores({ tournament, live: true })
-            console.log('[LiveSync] Fetched matches for league', leagueId, ':', matches.length, 'matches')
+            const matches = await fetchScoresRef.current({ tournament, live: true })
+            // console.log('[LiveSync] Fetched matches for league', leagueId, ':', matches.length, 'matches')
 
             // Match each game with live matches
             for (const game of leagueGames) {
@@ -81,19 +101,19 @@ export function useLiveGameSync() {
               })
 
               if (matchedMatch) {
-                console.log('[LiveSync] Matched game:', {
-                  gameId: game.id,
-                  matchedMatch: {
-                    homeTeam: matchedMatch.homeTeam,
-                    awayTeam: matchedMatch.awayTeam,
-                    status: matchedMatch.status,
-                    period: matchedMatch.period,
-                    timeRemaining: matchedMatch.timeRemaining,
-                    homeScore: matchedMatch.homeScore,
-                    awayScore: matchedMatch.awayScore,
-                    quarterScores: matchedMatch.quarterScores
-                  }
-                })
+                // console.log('[LiveSync] Matched game:', {
+                //   gameId: game.id,
+                //   matchedMatch: {
+                //     homeTeam: matchedMatch.homeTeam,
+                //     awayTeam: matchedMatch.awayTeam,
+                //     status: matchedMatch.status,
+                //     period: matchedMatch.period,
+                //     timeRemaining: matchedMatch.timeRemaining,
+                //     homeScore: matchedMatch.homeScore,
+                //     awayScore: matchedMatch.awayScore,
+                //     quarterScores: matchedMatch.quarterScores
+                //   }
+                // })
 
                 const statusMap: Record<string, 'scheduled' | 'live' | 'finished'> = {
                   LIVE: 'live',
@@ -121,9 +141,9 @@ export function useLiveGameSync() {
                 const hasQuarterScores = quarterScores.home.length > 0 || quarterScores.away.length > 0
                 const hasNonZeroScores = matchedMatch.homeScore > 0 || matchedMatch.awayScore > 0
                 const statusUpper = matchedMatch.status.toUpperCase()
-                
+
                 let gameStatus: 'scheduled' | 'live' | 'finished' = statusMap[statusUpper] || game.status
-                
+
                 // If we have quarter scores, the game has definitely started - mark as live
                 if (hasQuarterScores) {
                   gameStatus = 'live'
@@ -132,7 +152,7 @@ export function useLiveGameSync() {
                 else if (gameStatus === 'scheduled' && (hasPeriod || hasNonZeroScores)) {
                   gameStatus = 'live'
                 }
-                
+
                 // If status is not explicitly set but we have no period and no quarter scores, it's scheduled
                 if (!statusMap[statusUpper] && !hasPeriod && !hasQuarterScores && !hasNonZeroScores) {
                   gameStatus = 'scheduled'
@@ -172,7 +192,7 @@ export function useLiveGameSync() {
 
                 // Determine period - prioritize quarter scores, then matched period, then status
                 let period = matchedMatch.period
-                
+
                 // If we have quarter scores, determine period from them
                 if (!period && hasQuarterScores) {
                   if (quarterScores.home.length >= 4 || quarterScores.away.length >= 4) {
@@ -185,7 +205,7 @@ export function useLiveGameSync() {
                     period = 'Q1'
                   }
                 }
-                
+
                 // Fallback to matched period or status if it's a period indicator
                 if (!period) {
                   const statusUpper = matchedMatch.status.toUpperCase()
@@ -212,22 +232,22 @@ export function useLiveGameSync() {
                   time: timeRemaining
                 }
 
-                console.log('[LiveSync] Updating game:', {
-                  id: game.id,
-                  period: updatedGame.period,
-                  time: updatedGame.time,
-                  homeTotal: updatedGame.homeTeamScore.total,
-                  awayTotal: updatedGame.awayTeamScore.total
-                })
+                // console.log('[LiveSync] Updating game:', {
+                //   id: game.id,
+                //   period: updatedGame.period,
+                //   time: updatedGame.time,
+                //   homeTotal: updatedGame.homeTeamScore.total,
+                //   awayTotal: updatedGame.awayTeamScore.total
+                // })
 
-                updateGame(game.id, updatedGame)
+                updateGameRef.current(game.id, updatedGame)
               } else {
-                console.log('[LiveSync] No match found for game:', {
-                  gameId: game.id,
-                  homeTeamId: game.homeTeamId,
-                  awayTeamId: game.awayTeamId,
-                  availableMatches: matches.map(m => ({ home: m.homeTeam, away: m.awayTeam }))
-                })
+                // console.log('[LiveSync] No match found for game:', {
+                //   gameId: game.id,
+                //   homeTeamId: game.homeTeamId,
+                //   awayTeamId: game.awayTeamId,
+                //   availableMatches: matches.map((m) => ({ home: m.homeTeam, away: m.awayTeam }))
+                // })
               }
             }
           } catch (error) {
@@ -241,6 +261,7 @@ export function useLiveGameSync() {
 
     // Only set up polling if there are live games
     if (liveGamesCount > 0) {
+      console.log('[LiveSync] Setting up polling for', liveGamesCount, 'live games')
       // Initial sync
       startTransition(() => {
         syncLiveGames()
@@ -248,13 +269,18 @@ export function useLiveGameSync() {
 
       // Poll every 15 seconds for live games
       if (!intervalRef.current) {
+        // console.log('[LiveSync] Creating interval')
         intervalRef.current = setInterval(() => {
+          // console.log('[LiveSync] Interval tick - syncing...')
           startTransition(() => {
             syncLiveGames()
           })
         }, 15000) // 15 seconds
+      } else {
+        // console.log('[LiveSync] Interval already exists, skipping creation')
       }
     } else {
+      // console.log('[LiveSync] No live games, clearing interval')
       // Clear interval if no live games
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
@@ -264,11 +290,12 @@ export function useLiveGameSync() {
 
     return () => {
       if (intervalRef.current) {
+        // console.log('[LiveSync] Cleaning up interval')
         clearInterval(intervalRef.current)
         intervalRef.current = null
       }
       isPollingRef.current = false
     }
     // Use liveGamesCount instead of games array to avoid re-creating interval on every update
-  }, [liveGamesCount, fetchScores, updateGame])
+  }, [liveGamesCount])
 }

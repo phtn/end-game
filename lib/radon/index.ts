@@ -1,4 +1,4 @@
-import { parseMatchesFromHtml, type MatchScore } from './extractor'
+import { parseMatchesFromHtml, type MatchScore, extractGameStateFromHtml, type GameState } from './extractor'
 
 // const PBA_URL = 'https://statshub.sportradar.com/betika/en/sport/2/tournament/1956'
 
@@ -57,3 +57,5 @@ export async function extractPBAScores(html: string, live: boolean = false): Pro
     }
   }
 }
+
+export { extractGameStateFromHtml, type GameState }
